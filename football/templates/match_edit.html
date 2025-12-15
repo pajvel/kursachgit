@@ -1,0 +1,639 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Редактирование матча {{ match.home_team.name }} — {{ match.away_team.name }}{% endblock %}
+
+{% block content %}
+
+<section class="team-header">
+    <div class="team-header-logo">
+        {% if match.home_team.emblem %}
+            <img src="{% static 'emblems/' %}{{ match.home_team.emblem }}" alt="{{ match.home_team.name }}">
+        {% else %}
+            <span>{{ match.home_team.name|slice:":2"|upper }}</span>
+        {% endif %}
+    </div>
+    <div class="team-header-main">
+        <div class="team-header-title-line">
+            <h1 class="team-header-name">
+                {{ match.home_team.name }} — {{ match.away_team.name }}
+            </h1>
+        </div>
+        <div class="team-header-meta">
+            Редактирование матча · {{ match.date|date:"d.m.Y H:i" }} · {{ match.get_status_display }}
+        </div>
+    </div>
+    <div class="team-header-actions">
+        <a href="{% url 'match_detail' match.id %}" class="btn btn-ghost btn-small">
+            ← К странице матча
+        </a>
+        <a href="{% url 'match_events_edit' match.id %}" class="btn btn-ghost btn-small">
+            ⚡ События матча
+        </a>
+    </div>
+</section>
+
+{# ================== ОБЩИЕ ДАННЫЕ МАТЧА — БЕЗ SELECT ================== #}
+<section class="form-panel" style="margin-bottom:18px;">
+    <div class="form-header">
+        <h2 class="form-title">Общие данные матча</h2>
+        <p class="form-subtitle">
+            Выбери команды, дату и статус матча. Всё — в одном стиле «карточек».
+        </p>
+    </div>
+
+    {% if form.non_field_errors %}
+        <div class="form-errors" style="margin-bottom:8px;">
+            {{ form.non_field_errors }}
+        </div>
+    {% endif %}
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-body">
+
+            {# --- ХОЗЯЕВА --- #}
+            <div class="form-row">
+                <label class="form-label">Хозяева</label>
+                <input type="hidden"
+                       name="home_team"
+                       id="id_home_team"
+                       value="{{ form.home_team.value }}">
+                {% if form.home_team.errors %}
+                    <div class="form-errors">{{ form.home_team.errors }}</div>
+                {% endif %}
+
+                <div class="team-select-grid">
+                    {% for value,label in form.home_team.field.choices %}
+                        {% if value %}
+                            {% with val_str=value|stringformat:"s" cur=form.home_team.value|stringformat:"s" %}
+                            <div class="team-select-card {% if val_str == cur %}selected{% endif %}"
+                                 data-target-input="id_home_team"
+                                 data-value="{{ value }}">
+                                <div class="team-select-name">{{ label }}</div>
+                                <div class="team-select-meta">
+                                    {% if value == match.home_team.id %}
+                                        Текущие хозяева
+                                    {% elif value == match.away_team.id %}
+                                        Сейчас гости
+                                    {% else %}
+                                        Команда турнира
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endwith %}
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+
+            {# --- ГОСТИ --- #}
+            <div class="form-row" style="margin-top:12px;">
+                <label class="form-label">Гости</label>
+                <input type="hidden"
+                       name="away_team"
+                       id="id_away_team"
+                       value="{{ form.away_team.value }}">
+                {% if form.away_team.errors %}
+                    <div class="form-errors">{{ form.away_team.errors }}</div>
+                {% endif %}
+
+                <div class="team-select-grid">
+                    {% for value,label in form.away_team.field.choices %}
+                        {% if value %}
+                            {% with val_str=value|stringformat:"s" cur=form.away_team.value|stringformat:"s" %}
+                            <div class="team-select-card {% if val_str == cur %}selected{% endif %}"
+                                 data-target-input="id_away_team"
+                                 data-value="{{ value }}">
+                                <div class="team-select-name">{{ label }}</div>
+                                <div class="team-select-meta">
+                                    {% if value == match.away_team.id %}
+                                        Текущие гости
+                                    {% elif value == match.home_team.id %}
+                                        Сейчас хозяева
+                                    {% else %}
+                                        Команда турнира
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endwith %}
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+
+            {# --- ДАТА И ВРЕМЯ --- #}
+            <div class="form-row" style="margin-top:12px;">
+                <label class="form-label" for="{{ form.date.id_for_label }}">Дата и время</label>
+                {{ form.date }}
+                {% if form.date.errors %}
+                    <div class="form-errors">{{ form.date.errors }}</div>
+                {% endif %}
+            </div>
+
+            {# --- СТАТУС: ПИЛЮЛИ --- #}
+            <div class="form-row" style="margin-top:12px;">
+                <label class="form-label">Статус матча</label>
+                <input type="hidden"
+                       name="status"
+                       id="id_status"
+                       value="{{ form.status.value }}">
+                {% if form.status.errors %}
+                    <div class="form-errors">{{ form.status.errors }}</div>
+                {% endif %}
+
+                <div class="status-pill-row">
+                    {% for value,label in form.status.field.choices %}
+                        {% if value %}
+                            {% with val_str=value|stringformat:"s" cur=form.status.value|stringformat:"s" %}
+                            <button type="button"
+                                    class="status-pill {% if val_str == cur %}active{% endif %}"
+                                    data-target-input="id_status"
+                                    data-value="{{ value }}">
+                                {{ label }}
+                            </button>
+                            {% endwith %}
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="form-footer">
+            <span class="muted">
+                Составы и события не меняются, только базовая информация.
+            </span>
+            <button type="submit" name="save_match" class="btn btn-primary">
+                💾 Сохранить матч
+            </button>
+        </div>
+    </form>
+</section>
+
+{# ================== КОНСТРУКТОР СОСТАВОВ (С ЭМБЛЕМАМИ) ================== #}
+<section class="form-panel">
+    <div class="form-header">
+        <h2 class="form-title">Составы на матч</h2>
+        <p class="form-subtitle">
+            Отметь игроков в заявке и старте. В старте максимум 11 на команду (ограничение уже есть во view).
+        </p>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+
+        <div class="match-lineups-grid">
+
+            <!-- ХОЗЯЕВА -->
+            <div>
+                <div class="form-row" style="margin-bottom:6px;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <div class="emblem-sm">
+                            {% if match.home_team.emblem %}
+                                <img src="{% static 'emblems/' %}{{ match.home_team.emblem }}" alt="{{ match.home_team.name }}">
+                            {% else %}
+                                <span>{{ match.home_team.name|slice:":2"|upper }}</span>
+                            {% endif %}
+                        </div>
+                        <label class="form-label" style="margin:0;">
+                            Состав {{ match.home_team.name }}
+                        </label>
+                    </div>
+                </div>
+
+                {% if home_team_players %}
+                    <div class="match-player-grid">
+                        {% for tp in home_team_players %}
+                            {% with pid=tp.player.id %}
+                            <div class="match-player-card
+                                        {% if pid in lineup_player_ids %} selected{% endif %}
+                                        {% if pid in starting_player_ids %} starter{% endif %}"
+                                 data-player-id="{{ pid }}"
+                                 data-team="home">
+
+                                <div class="match-player-main">
+                                    <div class="match-player-name">
+                                        {{ tp.player.first_name }} {{ tp.player.last_name }}
+                                    </div>
+                                    <div class="match-player-meta">
+                                        {% if tp.number %}
+                                            № {{ tp.number }}
+                                        {% else %}
+                                            без номера
+                                        {% endif %}
+                                        ·
+                                        {% if tp.player.position %}
+                                            {{ tp.player.get_position_display }}
+                                        {% else %}
+                                            позиция не указана
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="match-player-controls">
+                                    <button type="button" class="match-pill pill-lineup">
+                                        В заявке
+                                    </button>
+                                    <button type="button" class="match-pill pill-starter">
+                                        Старт
+                                    </button>
+                                </div>
+
+                                <!-- скрытые чекбоксы -->
+                                <input type="checkbox"
+                                       name="home_players"
+                                       value="{{ pid }}"
+                                       class="match-hidden-input input-lineup"
+                                       {% if pid in lineup_player_ids %}checked{% endif %}>
+
+                                <input type="checkbox"
+                                       name="home_starters"
+                                       value="{{ pid }}"
+                                       class="match-hidden-input input-starter"
+                                       {% if pid in starting_player_ids %}checked{% endif %}>
+                            </div>
+                            {% endwith %}
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="muted">У хозяев ещё нет игроков в команде.</p>
+                {% endif %}
+            </div>
+
+            <!-- ГОСТИ -->
+            <div>
+                <div class="form-row" style="margin-bottom:6px;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <div class="emblem-sm">
+                            {% if match.away_team.emblem %}
+                                <img src="{% static 'emblems/' %}{{ match.away_team.emblem }}" alt="{{ match.away_team.name }}">
+                            {% else %}
+                                <span>{{ match.away_team.name|slice:":2"|upper }}</span>
+                            {% endif %}
+                        </div>
+                        <label class="form-label" style="margin:0;">
+                            Состав {{ match.away_team.name }}
+                        </label>
+                    </div>
+                </div>
+
+                {% if away_team_players %}
+                    <div class="match-player-grid">
+                        {% for tp in away_team_players %}
+                            {% with pid=tp.player.id %}
+                            <div class="match-player-card
+                                        {% if pid in lineup_player_ids %} selected{% endif %}
+                                        {% if pid in starting_player_ids %} starter{% endif %}"
+                                 data-player-id="{{ pid }}"
+                                 data-team="away">
+
+                                <div class="match-player-main">
+                                    <div class="match-player-name">
+                                        {{ tp.player.first_name }} {{ tp.player.last_name }}
+                                    </div>
+                                    <div class="match-player-meta">
+                                        {% if tp.number %}
+                                            № {{ tp.number }}
+                                        {% else %}
+                                            без номера
+                                        {% endif %}
+                                        ·
+                                        {% if tp.player.position %}
+                                            {{ tp.player.get_position_display }}
+                                        {% else %}
+                                            позиция не указана
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="match-player-controls">
+                                    <button type="button" class="match-pill pill-lineup">
+                                        В заявке
+                                    </button>
+                                    <button type="button" class="match-pill pill-starter">
+                                        Старт
+                                    </button>
+                                </div>
+
+                                <input type="checkbox"
+                                       name="away_players"
+                                       value="{{ pid }}"
+                                       class="match-hidden-input input-lineup"
+                                       {% if pid in lineup_player_ids %}checked{% endif %}>
+
+                                <input type="checkbox"
+                                       name="away_starters"
+                                       value="{{ pid }}"
+                                       class="match-hidden-input input-starter"
+                                       {% if pid in starting_player_ids %}checked{% endif %}>
+                            </div>
+                            {% endwith %}
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="muted">У гостей ещё нет игроков в команде.</p>
+                {% endif %}
+            </div>
+
+        </div>
+
+        <div class="form-footer" style="margin-top:16px;">
+            <span class="muted">
+                Лишние старты (больше 11) во view режутся автоматически.
+            </span>
+            <button type="submit" name="save_lineups" class="btn btn-primary">
+                💾 Сохранить составы
+            </button>
+        </div>
+    </form>
+</section>
+
+{# ===== ЛОКАЛЬНЫЕ СТИЛИ ===== #}
+<style>
+
+.team-select-card.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+
+.team-select-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 6px;
+}
+
+.team-select-card {
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    padding: 8px 10px;
+    background-color: #ffffff;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(15,23,42,0.04);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.team-select-card:hover {
+    border-color: #bbf7d0;
+    box-shadow: 0 6px 16px rgba(22,163,74,0.08);
+}
+
+.team-select-card.selected {
+    border-color: #16a34a;
+    background-color: #ecfdf5;
+}
+
+.team-select-name {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.team-select-meta {
+    font-size: 11px;
+    color: #6b7280;
+    margin-top: 2px;
+}
+
+.status-pill-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.status-pill {
+    border-radius: 999px;
+    border: 1px solid #d1d5db;
+    padding: 4px 10px;
+    font-size: 12px;
+    background-color: #f9fafb;
+    cursor: pointer;
+}
+
+.status-pill:hover {
+    border-color: #16a34a;
+}
+
+.status-pill.active {
+    background-color: #16a34a;
+    border-color: #15803d;
+    color: #ecfdf5;
+}
+
+.match-player-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+}
+
+.match-player-card {
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    padding: 8px 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    background-color: #ffffff;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(15,23,42,0.04);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.match-player-card:hover {
+    border-color: #bbf7d0;
+    box-shadow: 0 6px 16px rgba(22,163,74,0.08);
+}
+
+.match-player-card.selected {
+    border-color: #16a34a;
+    background-color: #ecfdf5;
+}
+
+.match-player-card.starter {
+    box-shadow: 0 0 0 1px #16a34a, 0 10px 24px rgba(22,163,74,0.16);
+}
+
+.match-player-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.match-player-name {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.match-player-meta {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 2px;
+}
+
+.match-player-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-end;
+}
+
+.match-pill {
+    border-radius: 999px;
+    border: 1px solid #d1d5db;
+    padding: 3px 10px;
+    font-size: 11px;
+    background-color: #f9fafb;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.match-pill:hover {
+    border-color: #16a34a;
+}
+
+.match-player-card.selected .pill-lineup {
+    background-color: #d1fae5;
+    border-color: #16a34a;
+    color: #166534;
+}
+
+.match-player-card.starter .pill-starter {
+    background-color: #16a34a;
+    border-color: #15803д;
+    color: #ecfdf5;
+}
+
+.match-hidden-input {
+    display: none;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // КАРТОЧКИ В ОБЩИХ ДАННЫХ (home/away) + блокировка одинаковой команды
+    const teamCards = document.querySelectorAll('.team-select-card');
+
+    function updateTeamCardsState() {
+        const homeInput = document.getElementById('id_home_team');
+        const awayInput = document.getElementById('id_away_team');
+        const homeId = homeInput ? homeInput.value : '';
+        const awayId = awayInput ? awayInput.value : '';
+
+        teamCards.forEach(card => {
+            const value = card.dataset.value;
+            const targetId = card.dataset.targetInput;
+
+            card.classList.remove('disabled');
+
+            if (targetId === 'id_home_team' && awayId && value === awayId) {
+                card.classList.add('disabled');
+            }
+            if (targetId === 'id_away_team' && homeId && value === homeId) {
+                card.classList.add('disabled');
+            }
+        });
+    }
+
+    teamCards.forEach(card => {
+        card.addEventListener('click', () => {
+            if (card.classList.contains('disabled')) {
+                return;
+            }
+            const targetId = card.dataset.targetInput;
+            const value    = card.dataset.value;
+            const input    = document.getElementById(targetId);
+            if (!input) return;
+
+            const sameTargetCards = document.querySelectorAll(
+                '.team-select-card[data-target-input="' + targetId + '"]'
+            );
+            sameTargetCards.forEach(c => c.classList.remove('selected'));
+
+            card.classList.add('selected');
+            input.value = value;
+
+            updateTeamCardsState();
+        });
+    });
+
+    // начальное состояние
+    updateTeamCardsState();
+
+
+    // ПИЛЮЛИ СТАТУСА
+    const statusPills = document.querySelectorAll('.status-pill');
+    statusPills.forEach(pill => {
+        pill.addEventListener('click', () => {
+            const targetId = pill.dataset.targetInput;
+            const value    = pill.dataset.value;
+            const input    = document.getElementById(targetId);
+            if (!input) return;
+
+            statusPills.forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            input.value = value;
+        });
+    });
+
+    // КАРТОЧКИ СОСТАВА
+    const cards = document.querySelectorAll('.match-player-card');
+
+    cards.forEach(card => {
+        const lineupInput  = card.querySelector('.input-lineup');
+        const starterInput = card.querySelector('.input-starter');
+        const lineupBtn    = card.querySelector('.pill-lineup');
+        const starterBtn   = card.querySelector('.pill-starter');
+
+        card.addEventListener('click', (e) => {
+            if (e.target.closest('.match-player-controls')) {
+                return;
+            }
+            toggleLineup();
+        });
+
+        if (lineupBtn) {
+            lineupBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleLineup();
+            });
+        }
+
+        if (starterBtn) {
+            starterBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleStarter();
+            });
+        }
+
+        function toggleLineup() {
+            if (!lineupInput) return;
+            const nowChecked = !lineupInput.checked;
+            lineupInput.checked = nowChecked;
+
+            card.classList.toggle('selected', nowChecked);
+
+            if (!nowChecked && starterInput) {
+                starterInput.checked = false;
+                card.classList.remove('starter');
+            }
+        }
+
+        function toggleStarter() {
+            if (!starterInput || !lineupInput) return;
+
+            if (!lineupInput.checked) {
+                lineupInput.checked = true;
+                card.classList.add('selected');
+            }
+
+            const nowStarter = !starterInput.checked;
+            starterInput.checked = nowStarter;
+            card.classList.toggle('starter', nowStarter);
+        }
+    });
+});
+</script>
+
+{% endblock %}

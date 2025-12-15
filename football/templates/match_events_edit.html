@@ -1,0 +1,961 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}События матча {{ match.home_team.name }} — {{ match.away_team.name }}{% endblock %}
+
+{% block content %}
+
+<section class="team-block">
+    <div class="team-block-header">
+        <div>
+            <h1 class="team-block-title">
+                Конструктор событий ·
+                <a href="{% url 'match_detail' match.id %}" class="link">
+                    {{ match.home_team.name }} — {{ match.away_team.name }}
+                </a>
+            </h1>
+            <p class="team-block-subtitle">
+                {{ match.date|date:"d.m.Y H:i" }} · {{ match.get_status_display }}
+            </p>
+        </div>
+        <a href="{% url 'match_detail' match.id %}" class="btn btn-ghost btn-small">
+            ← Назад к матчу
+        </a>
+    </div>
+
+    {% if errors %}
+        <div class="form-errors" style="margin-top:8px;">
+            <ul>
+                {% for e in errors %}
+                    <li>{{ e }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+</section>
+
+<div class="events-layout">
+
+    <!-- ЛЕВО: конструктор события -->
+    <section class="form-panel">
+        <div class="form-header">
+            <h2 class="form-title">Добавить событие</h2>
+            <p class="form-subtitle">
+                Шаг за шагом: команда → тип события → время → игроки.
+            </p>
+        </div>
+
+        <form method="post">
+            {% csrf_token %}
+
+            <!-- скрытые поля, которые реально уходит во view -->
+            <input type="hidden" name="event_team" id="id_event_team">
+            <input type="hidden" name="event_mode" id="id_event_mode">
+            <input type="hidden" name="event_player" id="id_event_player">
+            <input type="hidden" name="assist_player" id="id_assist_player">
+            <input type="hidden" name="sub_out" id="id_sub_out">
+            <input type="hidden" name="sub_in" id="id_sub_in">
+
+            <div class="event-builder">
+
+                <!-- Шаг 1. Выбор команды -->
+                <div class="event-builder-step">
+                    <div class="event-builder-step-title">1. Выбор команды</div>
+                    <div class="team-choice-grid">
+                        <div class="team-choice-card"
+                             data-team-id="{{ match.home_team.id }}">
+                            <div class="team-choice-emblem">
+                                {% if match.home_team.emblem %}
+                                    <img src="{% static 'emblems/' %}{{ match.home_team.emblem }}" alt="{{ match.home_team.name }}">
+                                {% else %}
+                                    <span>{{ match.home_team.name|slice:":2"|upper }}</span>
+                                {% endif %}
+                            </div>
+                            <div class="team-choice-body">
+                                <div class="team-choice-name">
+                                    {{ match.home_team.name }}
+                                </div>
+                                <div class="team-choice-tag">Хозяева</div>
+                            </div>
+                        </div>
+
+                        <div class="team-choice-card"
+                             data-team-id="{{ match.away_team.id }}">
+                            <div class="team-choice-emblem">
+                                {% if match.away_team.emblem %}
+                                    <img src="{% static 'emblems/' %}{{ match.away_team.emblem }}" alt="{{ match.away_team.name }}">
+                                {% else %}
+                                    <span>{{ match.away_team.name|slice:":2"|upper }}</span>
+                                {% endif %}
+                            </div>
+                            <div class="team-choice-body">
+                                <div class="team-choice-name">
+                                    {{ match.away_team.name }}
+                                </div>
+                                <div class="team-choice-tag">Гости</div>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="form-help">Нажми на карточку команды, от имени которой происходит событие.</p>
+                </div>
+
+                <!-- Шаг 2. Тип события -->
+                <div class="event-builder-step">
+                    <div class="event-builder-step-title">2. Тип события</div>
+                    <div class="event-type-pills">
+                        <label class="event-pill event-mode-pill" data-mode="goal">
+                            <input type="radio" name="event_mode_dummy">
+                            ⚽ Гол (+ пас)
+                        </label>
+                        <label class="event-pill event-mode-pill" data-mode="penalty">
+                            <input type="radio" name="event_mode_dummy">
+                            ⚽ Пенальти
+                        </label>
+                        <label class="event-pill event-mode-pill" data-mode="own">
+                            <input type="radio" name="event_mode_dummy">
+                            🥅 Автогол
+                        </label>
+                        <label class="event-pill event-mode-pill" data-mode="yellow">
+                            <input type="radio" name="event_mode_dummy">
+                            🟨 Жёлтая
+                        </label>
+                        <label class="event-pill event-mode-pill" data-mode="red">
+                            <input type="radio" name="event_mode_dummy">
+                            🟥 Красная
+                        </label>
+                        <label class="event-pill event-mode-pill" data-mode="sub">
+                            <input type="radio" name="event_mode_dummy">
+                            🔁 Замена
+                        </label>
+                    </div>
+                    <p class="form-help">
+                        Автогол: команда — та, которая забила в свои ворота (ей засчитают пропущенный).
+                    </p>
+                </div>
+
+                <!-- Шаг 3. Время -->
+                <div class="event-builder-step" data-mode-section="goal,penalty,own,yellow,red,sub">
+                    <div class="event-builder-step-title">3. Время события</div>
+                    <div class="event-time-row">
+                        <div class="form-row" style="max-width:110px;">
+                            <label class="form-label" for="id_event_minute">Минута</label>
+                            <input type="number" min="1" max="90"
+                                   name="event_minute"
+                                   id="id_event_minute"
+                                   class="form-input minute-input"
+                                   placeholder="45">
+                        </div>
+                        <div class="form-row" style="max-width:120px;">
+                            <label class="form-label" for="id_event_added_time">+ к минуте</label>
+                            <input type="number" min="0" max="15"
+                                   name="event_added_time"
+                                   id="id_event_added_time"
+                                   class="form-input minute-input"
+                                   placeholder="0">
+                        </div>
+                        <div class="form-row" style="flex:1;">
+                            <label class="form-label">&nbsp;</label>
+                            <p class="form-help" style="margin:0;">
+                                Минута 1–90, добавленное время опционально.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Шаг 4. Игроки -->
+                <div class="event-builder-step" data-mode-section="goal,penalty,own,yellow,red,sub">
+                    <div class="event-builder-step-title">4. Участники</div>
+
+                    <!-- Блоки игроков по командам (показывается только выбранная команда) -->
+
+                    <!-- ХОЗЯЕВА -->
+                    <div class="players-block" data-team-id="{{ match.home_team.id }}">
+
+                        <!-- Главный игрок (гол / автогол / карточка / пенальти) -->
+                        <div class="players-block-section"
+                             data-mode-section="goal,penalty,own,yellow,red">
+                            <div class="players-block-caption">
+                                Основной игрок события
+                                <span class="muted">(в заявке {{ match.home_team.name }})</span>
+                            </div>
+                            <div class="player-grid">
+                                {% for lu in home_lineups %}
+                                    <div class="player-card"
+                                         data-role="main"
+                                         data-player-id="{{ lu.player.id }}">
+                                        <div class="player-card-header">
+                                            <div class="player-card-name">
+                                                {{ lu.player.first_name }} {{ lu.player.last_name }}
+                                            </div>
+                                            <div class="player-card-tag">
+                                                {% if lu.is_starting %}
+                                                    Старт
+                                                {% else %}
+                                                    Запас
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="player-card-meta">
+                                            {% if lu.player.position %}
+                                                {{ lu.player.get_position_display }}
+                                            {% else %}
+                                                Без позиции
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <!-- Ассистент (только обычный гол) -->
+                        <div class="players-block-section"
+                             data-mode-section="goal">
+                            <div class="players-block-caption">
+                                Ассистент
+                                <span class="muted">(опционально)</span>
+                            </div>
+                            <div class="player-grid">
+                                {% for lu in home_lineups %}
+                                    <div class="player-card"
+                                         data-role="assist"
+                                         data-player-id="{{ lu.player.id }}">
+                                        <div class="player-card-header">
+                                            <div class="player-card-name">
+                                                {{ lu.player.first_name }} {{ lu.player.last_name }}
+                                            </div>
+                                            <div class="player-card-tag">
+                                                {% if lu.is_starting %}
+                                                    Старт
+                                                {% else %}
+                                                    Запас
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="player-card-meta">
+                                            {% if lu.player.position %}
+                                                {{ lu.player.get_position_display }}
+                                            {% else %}
+                                                Без позиции
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <!-- Замена: кто уходит / кто выходит -->
+                        <div class="players-block-section"
+                             data-mode-section="sub">
+                            <div class="players-block-caption">
+                                Замена в {{ match.home_team.name }}
+                            </div>
+
+                            <div class="players-subsplit">
+                                <div class="players-sub-column">
+                                    <div class="players-block-subtitle">
+                                        Уходит с поля
+                                    </div>
+                                    <div class="player-grid">
+                                        {% for lu in home_lineups %}
+                                            <div class="player-card"
+                                                 data-role="sub_out"
+                                                 data-player-id="{{ lu.player.id }}">
+                                                <div class="player-card-header">
+                                                    <div class="player-card-name">
+                                                        {{ lu.player.first_name }} {{ lu.player.last_name }}
+                                                    </div>
+                                                    <div class="player-card-tag">
+                                                        {% if lu.is_starting %}
+                                                            Старт
+                                                        {% else %}
+                                                            Запас
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                                <div class="player-card-meta">
+                                                    {% if lu.player.position %}
+                                                        {{ lu.player.get_position_display }}
+                                                    {% else %}
+                                                        Без позиции
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+
+                                <div class="players-sub-column">
+                                    <div class="players-block-subtitle">
+                                        Выходит на поле
+                                    </div>
+                                    <div class="player-grid">
+                                        {% for lu in home_bench_lineups %}
+                                            <div class="player-card"
+                                                 data-role="sub_in"
+                                                 data-player-id="{{ lu.player.id }}">
+                                                <div class="player-card-header">
+                                                    <div class="player-card-name">
+                                                        {{ lu.player.first_name }} {{ lu.player.last_name }}
+                                                    </div>
+                                                    <div class="player-card-tag">
+                                                        Запас
+                                                    </div>
+                                                </div>
+                                                <div class="player-card-meta">
+                                                    {% if lu.player.position %}
+                                                        {{ lu.player.get_position_display }}
+                                                    {% else %}
+                                                        Без позиции
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- ГОСТИ -->
+                    <div class="players-block" data-team-id="{{ match.away_team.id }}">
+
+                        <!-- Главный игрок -->
+                        <div class="players-block-section"
+                             data-mode-section="goal,penalty,own,yellow,red">
+                            <div class="players-block-caption">
+                                Основной игрок события
+                                <span class="muted">(в заявке {{ match.away_team.name }})</span>
+                            </div>
+                            <div class="player-grid">
+                                {% for lu in away_lineups %}
+                                    <div class="player-card"
+                                         data-role="main"
+                                         data-player-id="{{ lu.player.id }}">
+                                        <div class="player-card-header">
+                                            <div class="player-card-name">
+                                                {{ lu.player.first_name }} {{ lu.player.last_name }}
+                                            </div>
+                                            <div class="player-card-tag">
+                                                {% if lu.is_starting %}
+                                                    Старт
+                                                {% else %}
+                                                    Запас
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="player-card-meta">
+                                            {% if lu.player.position %}
+                                                {{ lu.player.get_position_display }}
+                                            {% else %}
+                                                Без позиции
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <!-- Ассистент -->
+                        <div class="players-block-section"
+                             data-mode-section="goal">
+                            <div class="players-block-caption">
+                                Ассистент
+                                <span class="muted">(опционально)</span>
+                            </div>
+                            <div class="player-grid">
+                                {% for lu in away_lineups %}
+                                    <div class="player-card"
+                                         data-role="assist"
+                                         data-player-id="{{ lu.player.id }}">
+                                        <div class="player-card-header">
+                                            <div class="player-card-name">
+                                                {{ lu.player.first_name }} {{ lu.player.last_name }}
+                                            </div>
+                                            <div class="player-card-tag">
+                                                {% if lu.is_starting %}
+                                                    Старт
+                                                {% else %}
+                                                    Запас
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="player-card-meta">
+                                            {% if lu.player.position %}
+                                                {{ lu.player.get_position_display }}
+                                            {% else %}
+                                                Без позиции
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <!-- Замена -->
+                        <div class="players-block-section"
+                             data-mode-section="sub">
+                            <div class="players-block-caption">
+                                Замена в {{ match.away_team.name }}
+                            </div>
+
+                            <div class="players-subsplit">
+                                <div class="players-sub-column">
+                                    <div class="players-block-subtitle">
+                                        Уходит с поля
+                                    </div>
+                                    <div class="player-grid">
+                                        {% for lu in away_lineups %}
+                                            <div class="player-card"
+                                                 data-role="sub_out"
+                                                 data-player-id="{{ lu.player.id }}">
+                                                <div class="player-card-header">
+                                                    <div class="player-card-name">
+                                                        {{ lu.player.first_name }} {{ lu.player.last_name }}
+                                                    </div>
+                                                    <div class="player-card-tag">
+                                                        {% if lu.is_starting %}
+                                                            Старт
+                                                        {% else %}
+                                                            Запас
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                                <div class="player-card-meta">
+                                                    {% if lu.player.position %}
+                                                        {{ lu.player.get_position_display }}
+                                                    {% else %}
+                                                        Без позиции
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+
+                                <div class="players-sub-column">
+                                    <div class="players-block-subtitle">
+                                        Выходит на поле
+                                    </div>
+                                    <div class="player-grid">
+                                        {% for lu in away_bench_lineups %}
+                                            <div class="player-card"
+                                                 data-role="sub_in"
+                                                 data-player-id="{{ lu.player.id }}">
+                                                <div class="player-card-header">
+                                                    <div class="player-card-name">
+                                                        {{ lu.player.first_name }} {{ lu.player.last_name }}
+                                                    </div>
+                                                    <div class="player-card-tag">
+                                                        Запас
+                                                    </div>
+                                                </div>
+                                                <div class="player-card-meta">
+                                                    {% if lu.player.position %}
+                                                        {{ lu.player.get_position_display }}
+                                                    {% else %}
+                                                        Без позиции
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div class="form-footer">
+                    <span class="muted">
+                        Перед сохранением убедись, что выделена команда, тип события и игрок.
+                    </span>
+                    <button type="submit" name="add_event" class="btn btn-primary">
+                        + Добавить событие
+                    </button>
+                </div>
+            </div>
+        </form>
+    </section>
+
+    <!-- ПРАВО: список событий + удаление -->
+    <section class="team-block events-table-panel">
+        <div class="team-block-header">
+            <h2 class="team-block-title">События матча</h2>
+            <p class="team-block-subtitle">Для удаления отметь галочками и нажми кнопку.</p>
+        </div>
+
+        <form method="post" class="events-table-form">
+            {% csrf_token %}
+            <table class="table players-table small">
+                <thead>
+                    <tr>
+                        <th style="width:26px;"></th>
+                        <th>Время</th>
+                        <th>Команда</th>
+                        <th>Игрок</th>
+                        <th>Тип</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for e in events %}
+                        <tr>
+                            <td>
+                                <input type="checkbox" name="event_id" value="{{ e.id }}">
+                            </td>
+                            <td class="cell-num">
+                                {{ e.minute }}'{% if e.added_time %}+{{ e.added_time }}{% endif %}
+                            </td>
+                            <td>
+                                <span class="muted">
+                                    {% if e.team %}
+                                        {{ e.team.name }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </span>
+                            </td>
+                            <td>
+                                {% if e.player %}
+                                    <a href="{% url 'player_detail' e.player.id %}" class="link">
+                                        {{ e.player.first_name }} {{ e.player.last_name }}
+                                    </a>
+                                {% else %}
+                                    <span class="muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if e.event_type == 'гол' %}
+                                    ⚽ Гол
+                                {% elif e.event_type == 'пенальти_гол' %}
+                                    ⚽ Пенальти
+                                {% elif e.event_type == 'автогол' %}
+                                    🥅 Автогол
+                                {% elif e.event_type == 'ассист' %}
+                                    🎯 Ассист
+                                {% elif e.event_type == 'желтая' %}
+                                    🟨 Жёлтая
+                                {% elif e.event_type == 'красная' %}
+                                    🟥 Красная
+                                {% elif e.event_type == 'замена' %}
+                                    🔁 Замена
+                                {% else %}
+                                    {{ e.event_type }}
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="5" class="muted">
+                                Пока нет ни одного события.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <div class="delete-footer" style="margin-top:10px;">
+                <button type="submit" name="delete_events" class="btn btn-danger btn-small">
+                    🗑 Удалить выбранные
+                </button>
+            </div>
+        </form>
+    </section>
+
+</div>
+
+<!-- JS для конструктора -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const teamCards     = document.querySelectorAll('.team-choice-card');
+    const modePills     = document.querySelectorAll('.event-mode-pill');
+    const playersBlocks = document.querySelectorAll('.players-block');
+    const modeSections  = document.querySelectorAll('[data-mode-section]');
+    const playerCards   = document.querySelectorAll('.player-card');
+
+    const hiddenTeam   = document.getElementById('id_event_team');
+    const hiddenMode   = document.getElementById('id_event_mode');
+    const hiddenPlayer = document.getElementById('id_event_player');
+    const hiddenAssist = document.getElementById('id_assist_player');
+    const hiddenSubOut = document.getElementById('id_sub_out');
+    const hiddenSubIn  = document.getElementById('id_sub_in');
+
+    const minuteInput = document.getElementById('id_event_minute');
+    const addedInput  = document.getElementById('id_event_added_time');
+
+    // --- данные по составам и заменам (как на бэке) ---
+
+    const startingByTeam = {
+        "{{ match.home_team.id }}": [
+            {% for lu in home_lineups %}
+                {% if lu.is_starting %}{{ lu.player.id }},{% endif %}
+            {% endfor %}
+        ],
+        "{{ match.away_team.id }}": [
+            {% for lu in away_lineups %}
+                {% if lu.is_starting %}{{ lu.player.id }},{% endif %}
+            {% endfor %}
+        ]
+    };
+
+    const subsByTeam = {
+        "{{ match.home_team.id }}": [
+            {% for e in events %}
+                {% if e.event_type == 'замена' and e.team_id == match.home_team.id %}
+                    {
+                        minute: {% if e.minute %}{{ e.minute }}{% else %}0{% endif %},
+                        added : {% if e.added_time %}{{ e.added_time }}{% else %}0{% endif %},
+                        player_id: {% if e.player_id %}{{ e.player_id }}{% else %}null{% endif %}
+                    },
+                {% endif %}
+            {% endfor %}
+        ],
+        "{{ match.away_team.id }}": [
+            {% for e in events %}
+                {% if e.event_type == 'замена' and e.team_id == match.away_team.id %}
+                    {
+                        minute: {% if e.minute %}{{ e.minute }}{% else %}0{% endif %},
+                        added : {% if e.added_time %}{{ e.added_time }}{% else %}0{% endif %},
+                        player_id: {% if e.player_id %}{{ e.player_id }}{% else %}null{% endif %}
+                    },
+                {% endif %}
+            {% endfor %}
+        ]
+    };
+
+    // первая замена игрока: когда вообще впервые был в событии "замена"
+    // kind = 'in' (вышел) или 'out' (ушёл)
+    const firstSubByPlayer = {}; // playerId -> {minute, added, kind}
+
+    function timeCompare(m1, a1, m2, a2) {
+        m1 = m1 || 0; a1 = a1 || 0;
+        m2 = m2 || 0; a2 = a2 || 0;
+        if (m1 < m2) return -1;
+        if (m1 > m2) return 1;
+        if (a1 < a2) return -1;
+        if (a1 > a2) return 1;
+        return 0;
+    }
+
+    function formatTime(m, a) {
+        if (!m) m = 0;
+        if (!a) a = 0;
+        return m + "'" + (a ? ("+" + a) : "");
+    }
+
+    // считаем, у какого игрока когда была первая замена
+    function precomputeFirstSubs() {
+        for (const teamId in subsByTeam) {
+            const subs = subsByTeam[teamId] || [];
+            if (!subs.length) continue;
+
+            const starting = new Set(startingByTeam[teamId] || []);
+            const onField  = new Set(starting);
+
+            let i = 0;
+            while (i < subs.length) {
+                const m = subs[i].minute || 0;
+                const a = subs[i].added  || 0;
+
+                const group = [];
+                while (i < subs.length &&
+                       (subs[i].minute || 0) === m &&
+                       (subs[i].added  || 0) === a) {
+                    group.push(subs[i]);
+                    i++;
+                }
+
+                const playersInGroup = group
+                    .map(ev => ev.player_id)
+                    .filter(pid => pid !== null && pid !== undefined);
+
+                const outCandidates = playersInGroup.filter(pid => onField.has(pid));
+                const inCandidates  = playersInGroup.filter(pid => !onField.has(pid));
+
+                outCandidates.forEach(pid => {
+                    if (!firstSubByPlayer[pid]) {
+                        firstSubByPlayer[pid] = {minute: m, added: a, kind: 'out'};
+                    }
+                    onField.delete(pid);
+                });
+
+                inCandidates.forEach(pid => {
+                    if (!firstSubByPlayer[pid]) {
+                        firstSubByPlayer[pid] = {minute: m, added: a, kind: 'in'};
+                    }
+                    onField.add(pid);
+                });
+            }
+        }
+
+        // подпись "вышел/ушёл" прямо в карточку
+        playerCards.forEach(card => {
+            const pid = parseInt(card.dataset.playerId || "", 10);
+            if (!pid) return;
+            const info = firstSubByPlayer[pid];
+            if (!info) return;
+
+            card.dataset.firstSubMinute = info.minute;
+            card.dataset.firstSubAdded  = info.added || 0;
+
+            const meta = card.querySelector('.player-card-meta');
+            if (meta) {
+                const extra = document.createElement('div');
+                extra.classList.add('muted');
+                const verb = info.kind === 'in' ? 'Вышел на ' : 'Ушёл на ';
+                extra.textContent = verb + formatTime(info.minute, info.added);
+                meta.appendChild(extra);
+            }
+        });
+    }
+
+    // кто на поле к моменту (minute, added) для команды teamId
+    function getOnField(teamId, minute, added) {
+        const start = startingByTeam[teamId] || [];
+        const onField = new Set(start);
+        const subs = subsByTeam[teamId] || [];
+
+        const targetMinute = minute || 0;
+        const targetAdded  = added || 0;
+
+        for (let i = 0; i < subs.length; i++) {
+            const ev = subs[i];
+            const m = ev.minute || 0;
+            const a = ev.added  || 0;
+
+            if (m > targetMinute || (m === targetMinute && a >= targetAdded)) {
+                break;
+            }
+
+            const pid = ev.player_id;
+            if (!pid) continue;
+
+            if (onField.has(pid)) {
+                onField.delete(pid);
+            } else {
+                onField.add(pid);
+            }
+        }
+        return onField;
+    }
+
+    function resetPlayersSelection() {
+        hiddenPlayer.value = '';
+        hiddenAssist.value = '';
+        hiddenSubOut.value = '';
+        hiddenSubIn.value  = '';
+        playerCards.forEach(c => c.classList.remove('selected'));
+    }
+
+    // основная функция: показывает / прячет игроков и отключает "ранние" замены
+    function updatePlayersVisibility() {
+        const teamId = hiddenTeam.value;
+        const mode   = hiddenMode.value;
+
+        const minute = parseInt(minuteInput.value, 10);
+        const added  = parseInt(addedInput.value, 10);
+
+        const hasTeam   = !!teamId;
+        const hasMode   = !!mode;
+        const hasMinute = !isNaN(minute);
+
+        // по умолчанию всё спрятать
+        playersBlocks.forEach(block => {
+            block.classList.remove('visible');
+        });
+        playerCards.forEach(card => {
+            card.style.display = 'none';
+            card.style.opacity = '';
+            card.style.pointerEvents = '';
+        });
+
+        // пока не выбраны команда + тип + минута — игроков не показываем
+        if (!hasTeam || !hasMode || !hasMinute) {
+            return;
+        }
+
+        // показать блок игроков только выбранной команды
+        playersBlocks.forEach(block => {
+            if (String(block.dataset.teamId) === String(teamId)) {
+                block.classList.add('visible');
+            }
+        });
+
+        const onField = getOnField(
+            String(teamId),
+            minute,
+            isNaN(added) ? 0 : added
+        );
+
+        playerCards.forEach(card => {
+            const block = card.closest('.players-block');
+            if (!block || String(block.dataset.teamId) !== String(teamId)) {
+                card.style.display = 'none';
+                return;
+            }
+
+            const role = card.dataset.role;
+            const pid  = parseInt(card.dataset.playerId || "", 10);
+            if (!pid) {
+                card.style.display = 'none';
+                return;
+            }
+
+            let visible = false;
+
+            if (mode === 'sub') {
+                // замена: уходит — только кто на поле, выходит — только кто НЕ на поле
+                if (role === 'sub_out') {
+                    visible = onField.has(pid);
+                } else if (role === 'sub_in') {
+                    visible = !onField.has(pid);
+                }
+            } else {
+                // гол, пас, карточки — только игроки на поле
+                if (role === 'main' || role === 'assist') {
+                    visible = onField.has(pid);
+                }
+            }
+
+            if (!visible) {
+                card.style.display = 'none';
+                card.classList.remove('selected');
+                return;
+            }
+
+            // здесь игрок виден; проверяем, не ставим ли событие "до того, как он вообще участвовал в замене"
+            let disabledByTime = false;
+            if (mode === 'sub' && (role === 'sub_out' || role === 'sub_in')) {
+                const firstMin = parseInt(card.dataset.firstSubMinute || "", 10);
+                const firstAdd = parseInt(card.dataset.firstSubAdded || "", 10) || 0;
+
+                if (!isNaN(firstMin)) {
+                    const cmp = timeCompare(
+                        minute,
+                        isNaN(added) ? 0 : added,
+                        firstMin,
+                        firstAdd
+                    );
+                    // если выбранная минута МЕНЬШЕ первой замены игрока — блокируем
+                    if (cmp < 0) {
+                        disabledByTime = true;
+                    }
+                }
+            }
+
+            card.style.display = '';
+            if (disabledByTime) {
+                card.style.opacity = '0.5';
+                card.style.pointerEvents = 'none';
+            } else {
+                card.style.opacity = '';
+                card.style.pointerEvents = '';
+            }
+        });
+    }
+
+    // выбор команды
+    teamCards.forEach(card => {
+        card.addEventListener('click', () => {
+            teamCards.forEach(c => c.classList.remove('active'));
+            card.classList.add('active');
+            hiddenTeam.value = card.dataset.teamId;
+
+            resetPlayersSelection();
+            updatePlayersVisibility();
+        });
+    });
+
+    // выбор типа события
+    modePills.forEach(pill => {
+        pill.addEventListener('click', () => {
+            modePills.forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+
+            const mode = pill.dataset.mode;
+            hiddenMode.value = mode;
+
+            // включаем / выключаем части формы
+            modeSections.forEach(sec => {
+                const modes = sec.dataset.modeSection.split(',');
+                if (modes.indexOf(mode) !== -1) {
+                    sec.style.display = 'block';
+                } else {
+                    sec.style.display = 'none';
+                }
+            });
+
+            resetPlayersSelection();
+            updatePlayersVisibility();
+        });
+    });
+
+    // изменение минуты / добавленного времени
+    minuteInput.addEventListener('input', () => {
+        resetPlayersSelection();
+        updatePlayersVisibility();
+    });
+
+    addedInput.addEventListener('input', () => {
+        resetPlayersSelection();
+        updatePlayersVisibility();
+    });
+
+    // выбор игрока (без изменений логики, просто проверяем, что он не "заблокирован")
+    playerCards.forEach(card => {
+        card.addEventListener('click', () => {
+            const minute = parseInt(minuteInput.value, 10);
+            if (!hiddenTeam.value || !hiddenMode.value || isNaN(minute)) {
+                return;
+            }
+            if (card.style.pointerEvents === 'none') {
+                // игрок отключён из-за "раннего" времени
+                return;
+            }
+
+            const role = card.dataset.role;
+            const pid  = card.dataset.playerId;
+
+            if (role === 'main') {
+                document.querySelectorAll('.player-card[data-role="main"]').forEach(c => {
+                    c.classList.remove('selected');
+                });
+                card.classList.add('selected');
+                hiddenPlayer.value = pid;
+
+            } else if (role === 'assist') {
+                if (hiddenAssist.value === pid) {
+                    hiddenAssist.value = '';
+                    card.classList.remove('selected');
+                } else {
+                    document.querySelectorAll('.player-card[data-role="assist"]').forEach(c => {
+                        c.classList.remove('selected');
+                    });
+                    hiddenAssist.value = pid;
+                    card.classList.add('selected');
+                }
+
+            } else if (role === 'sub_out') {
+                document.querySelectorAll('.player-card[data-role="sub_out"]').forEach(c => {
+                    c.classList.remove('selected');
+                });
+                card.classList.add('selected');
+                hiddenSubOut.value = pid;
+
+            } else if (role === 'sub_in') {
+                document.querySelectorAll('.player-card[data-role="sub_in"]').forEach(c => {
+                    c.classList.remove('selected');
+                });
+                card.classList.add('selected');
+                hiddenSubIn.value = pid;
+            }
+        });
+    });
+
+    precomputeFirstSubs();
+});
+</script>
+
+{% endblock %}

@@ -1,0 +1,326 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Отчёты{% endblock %}
+
+{% block content %}
+
+<section class="form-panel">
+    <div class="form-header">
+        <h1 class="form-title">Отчёты и выгрузка данных</h1>
+        <p class="form-subtitle">
+            Выбери тип отчёта, при необходимости отфильтруй — и скачай файл.
+        </p>
+    </div>
+
+    <form method="get">
+        <div class="form-body">
+
+            <!-- ШАГ 1: тип отчёта -->
+            <div class="event-builder-step">
+                <div class="event-builder-step-title">1. Что выгружаем</div>
+
+                <!-- скрытое поле, в него будем писать выбранный тип -->
+                <input type="hidden" name="kind" id="id_kind" value="{{ kind|default:'' }}">
+
+                <div class="event-type-pills">
+                    <button type="button"
+                            class="event-pill kind-pill{% if kind == 'players' %} active{% endif %}"
+                            data-kind="players">
+                        👕 Игроки
+                    </button>
+                    <button type="button"
+                            class="event-pill kind-pill{% if kind == 'teams' %} active{% endif %}"
+                            data-kind="teams">
+                        🏆 Команды (таблица)
+                    </button>
+                    <button type="button"
+                            class="event-pill kind-pill{% if kind == 'matches' %} active{% endif %}"
+                            data-kind="matches">
+                        📅 Матчи
+                    </button>
+                </div>
+            </div>
+
+            <!-- ШАГ 1.5: формат файла -->
+            <div class="event-builder-step">
+                <div class="event-builder-step-title">2. Формат файла</div>
+
+                <input type="hidden" name="format" id="id_format" value="{{ fmt|default:'excel' }}">
+
+                <div class="event-type-pills">
+                    <button type="button"
+                            class="event-pill format-pill{% if fmt == 'excel' or not fmt %} active{% endif %}"
+                            data-format="excel">
+                        📊 Excel (.xls)
+                    </button>
+                    <button type="button"
+                            class="event-pill format-pill{% if fmt == 'txt' %} active{% endif %}"
+                            data-format="txt">
+                        📄 Текстовый (.txt)
+                    </button>
+                </div>
+
+                <p class="form-help" style="margin-top:6px;">
+                    Excel открывается как табличка, текстовый — обычный файл с табуляцией.
+                </p>
+            </div>
+
+            <!-- ШАГ 3: фильтры для ИГРОКОВ -->
+            <div class="event-builder-step"
+                 id="players-filters"
+                 style="{% if kind != 'players' %}display:none;{% endif %}">
+                <div class="event-builder-step-title">3. Фильтры для отчёта по игрокам</div>
+
+                <!-- скрытые поля для фильтров игроков -->
+                <input type="hidden" name="team" id="id_team" value="{{ team_id|default:'' }}">
+                <input type="hidden" name="position" id="id_position" value="{{ position|default:'' }}">
+
+                <!-- выбор команды (карточки, как в других местах) -->
+                <div class="form-row">
+                    <label class="form-label">Команда</label>
+                    <div class="team-choice-grid">
+                        {% for t in teams %}
+                            <div class="team-choice-card team-filter-card
+                                 {% if team_id|default:'' == t.id|stringformat:'s' %}active{% endif %}"
+                                 data-team-id="{{ t.id }}">
+                                <div class="team-choice-emblem">
+                                    {% if t.emblem %}
+                                        <img src="{% static 'emblems/' %}{{ t.emblem }}" alt="{{ t.name }}">
+                                    {% else %}
+                                        <span>{{ t.name|slice:":2"|upper }}</span>
+                                    {% endif %}
+                                </div>
+                                <div class="team-choice-body">
+                                    <div class="team-choice-name">{{ t.name }}</div>
+                                    <div class="team-choice-tag">
+                                        {% if t.city %}{{ t.city }}{% else %}Без города{% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <p class="form-help">
+                        Клик по карточке выбирает команду. Повторный клик снимает выбор. Пусто = все команды.
+                    </p>
+                </div>
+
+                <!-- выбор позиции (пилюли) -->
+                <div class="form-row" style="margin-top:10px;">
+                    <label class="form-label">Позиция</label>
+                    <div class="position-pills">
+                        {% for value, label in positions %}
+                            <button type="button"
+                                    class="btn btn-ghost btn-small position-filter-btn{% if position == value %} position-btn-active{% endif %}"
+                                    data-value="{{ value }}">
+                                {{ label }}
+                            </button>
+                        {% endfor %}
+                        <!-- кнопка "сбросить позицию" -->
+                        <button type="button"
+                                class="btn btn-ghost btn-small position-filter-btn{% if not position %} position-btn-active{% endif %}"
+                                data-value="">
+                            Все позиции
+                        </button>
+                    </div>
+                </div>
+
+                <p class="form-help" style="margin-top:6px;">
+                    Эти фильтры учитываются только если выбран отчёт «Игроки».
+                </p>
+            </div>
+
+            <!-- ШАГ 4: фильтры для МАТЧЕЙ -->
+            <div class="event-builder-step"
+                 id="matches-filters"
+                 style="{% if kind != 'matches' %}display:none;{% endif %}">
+                <div class="event-builder-step-title">3. Фильтры для отчёта по матчам</div>
+
+                <!-- скрытые поля для фильтров матчей -->
+                <input type="hidden" name="match_team" id="id_match_team" value="{{ match_team_id|default:'' }}">
+                <input type="hidden" name="match_status" id="id_match_status" value="{{ match_status|default:'' }}">
+
+                <!-- команда в матчах -->
+                <div class="form-row">
+                    <label class="form-label">Команда в матче</label>
+                    <div class="team-choice-grid">
+                        {% for t in teams %}
+                            <div class="team-choice-card match-team-filter-card
+                                 {% if match_team_id|default:'' == t.id|stringformat:'s' %}active{% endif %}"
+                                 data-team-id="{{ t.id }}">
+                                <div class="team-choice-emblem">
+                                    {% if t.emblem %}
+                                        <img src="{% static 'emblems/' %}{{ t.emblem }}" alt="{{ t.name }}">
+                                    {% else %}
+                                        <span>{{ t.name|slice:":2"|upper }}</span>
+                                    {% endif %}
+                                </div>
+                                <div class="team-choice-body">
+                                    <div class="team-choice-name">{{ t.name }}</div>
+                                    <div class="team-choice-tag">
+                                        {% if t.city %}{{ t.city }}{% else %}Без города{% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <p class="form-help">
+                        Пусто = матчи всех команд.
+                    </p>
+                </div>
+
+                <!-- статус матча -->
+                <div class="form-row" style="margin-top:10px;">
+                    <label class="form-label">Статус матча</label>
+                    <div class="event-type-pills">
+                        <button type="button"
+                                class="event-pill match-status-pill{% if match_status == 'запланирован' %} active{% endif %}"
+                                data-status="запланирован">
+                            📅 Запланирован
+                        </button>
+                        <button type="button"
+                                class="event-pill match-status-pill{% if match_status == 'идёт' %} active{% endif %}"
+                                data-status="идёт">
+                            ⏱ Идёт
+                        </button>
+                        <button type="button"
+                                class="event-pill match-status-pill{% if match_status == 'завершён' %} active{% endif %}"
+                                data-status="завершён">
+                            ✅ Завершён
+                        </button>
+                        <button type="button"
+                                class="event-pill match-status-pill{% if not match_status %} active{% endif %}"
+                                data-status="">
+                            Все
+                        </button>
+                    </div>
+                </div>
+
+                <p class="form-help" style="margin-top:6px;">
+                    Эти фильтры учитываются только если выбран отчёт «Матчи».
+                </p>
+            </div>
+
+        </div>
+
+        <div class="form-footer">
+            <span class="muted">
+                Сначала выбери тип отчёта, затем при желании отфильтруй. Файл сразу начнёт скачиваться.
+            </span>
+            <input type="hidden" name="download" value="1">
+            <button type="submit" class="btn btn-primary btn-small">
+                📥 Скачать отчёт
+            </button>
+        </div>
+    </form>
+</section>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const kindInput        = document.getElementById('id_kind');
+    const formatInput      = document.getElementById('id_format');
+    const teamInput        = document.getElementById('id_team');
+    const positionInput    = document.getElementById('id_position');
+    const matchTeamInput   = document.getElementById('id_match_team');
+    const matchStatusInput = document.getElementById('id_match_status');
+
+    const kindPills   = document.querySelectorAll('.kind-pill');
+    const formatPills = document.querySelectorAll('.format-pill');
+
+    const playersFilters  = document.getElementById('players-filters');
+    const matchesFilters  = document.getElementById('matches-filters');
+
+    const teamFilterCards       = document.querySelectorAll('.team-filter-card');
+    const matchTeamFilterCards  = document.querySelectorAll('.match-team-filter-card');
+    const positionFilterBtns    = document.querySelectorAll('.position-filter-btn');
+    const matchStatusPills      = document.querySelectorAll('.match-status-pill');
+
+    function updateFiltersVisibility() {
+        const kind = kindInput.value;
+
+        if (kind === 'players') {
+            playersFilters.style.display = 'block';
+            matchesFilters.style.display = 'none';
+        } else if (kind === 'matches') {
+            playersFilters.style.display = 'none';
+            matchesFilters.style.display = 'block';
+        } else {
+            playersFilters.style.display = 'none';
+            matchesFilters.style.display = 'none';
+        }
+    }
+
+    // выбор типа отчёта
+    kindPills.forEach(pill => {
+        pill.addEventListener('click', () => {
+            kindPills.forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            kindInput.value = pill.dataset.kind || '';
+            updateFiltersVisibility();
+        });
+    });
+
+    // выбор формата
+    formatPills.forEach(pill => {
+        pill.addEventListener('click', () => {
+            formatPills.forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            formatInput.value = pill.dataset.format || '';
+        });
+    });
+
+    // фильтр: команда для игроков
+    teamFilterCards.forEach(card => {
+        card.addEventListener('click', () => {
+            const id = card.dataset.teamId;
+            if (teamInput.value === id) {
+                // снять выбор
+                teamInput.value = '';
+                card.classList.remove('active');
+            } else {
+                teamFilterCards.forEach(c => c.classList.remove('active'));
+                teamInput.value = id;
+                card.classList.add('active');
+            }
+        });
+    });
+
+    // фильтр: позиция
+    positionFilterBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            positionFilterBtns.forEach(b => b.classList.remove('position-btn-active'));
+            btn.classList.add('position-btn-active');
+            positionInput.value = btn.dataset.value || '';
+        });
+    });
+
+    // фильтр: команда для матчей
+    matchTeamFilterCards.forEach(card => {
+        card.addEventListener('click', () => {
+            const id = card.dataset.teamId;
+            if (matchTeamInput.value === id) {
+                matchTeamInput.value = '';
+                card.classList.remove('active');
+            } else {
+                matchTeamFilterCards.forEach(c => c.classList.remove('active'));
+                matchTeamInput.value = id;
+                card.classList.add('active');
+            }
+        });
+    });
+
+    // фильтр: статус матчей
+    matchStatusPills.forEach(pill => {
+        pill.addEventListener('click', () => {
+            matchStatusPills.forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            matchStatusInput.value = pill.dataset.status || '';
+        });
+    });
+
+    // при загрузке страницы поправим видимость фильтров
+    updateFiltersVisibility();
+});
+</script>
+
+{% endblock %}

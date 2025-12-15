@@ -1,0 +1,161 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ team.name }}{% endblock %}
+
+{% block content %}
+
+<!-- ШАПКА КОМАНДЫ -->
+<div class="team-header">
+    <div class="team-header-logo">
+        {% if team.emblem %}
+            <img src="{% static 'emblems/' %}{{ team.emblem }}" alt="{{ team.name }}">
+        {% else %}
+            <span>{{ team.name|slice:":2"|upper }}</span>
+        {% endif %}
+    </div>
+    <div class="team-header-main">
+        <div class="team-header-title-line">
+            <h1 class="team-header-name">{{ team.name }}</h1>
+            {% if team.city %}
+                <span class="team-header-short">{{ team.city }}</span>
+            {% endif %}
+        </div>
+        <div class="team-header-meta">
+            {% if team.coach %}
+                Тренер: <strong>{{ team.coach }}</strong>
+            {% else %}
+                Тренер: <span class="muted">не указан</span>
+            {% endif %}
+            {% if team_row %}
+                · Матчей: {{ team_row.games }},
+                голы: {{ team_row.goals_for }}–{{ team_row.goals_against }},
+                очки: {{ team_row.points }}
+            {% endif %}
+        </div>
+    </div>
+    <div class="team-header-actions">
+        <a href="{% url 'team_edit' team.id %}" class="btn btn-ghost btn-small">
+            ✏️ Редактировать команду
+        </a>
+        <a href="{% url 'team_squad_edit' team.id %}" class="btn btn-ghost btn-small">
+            👥 Редактировать состав
+        </a>
+        <a href="{% url 'team_delete' team.id %}" class="btn btn-danger btn-small">
+            🗑 Удалить
+        </a>
+    </div>
+</div>
+
+<div class="team-page-layout">
+
+    <!-- ЛЕВАЯ КОЛОНКА: СОСТАВ -->
+    <section class="team-block">
+        <div class="team-block-header">
+            <div>
+                <h2 class="team-block-title">Состав команды</h2>
+                <p class="team-block-subtitle">
+                    Игры считаются по старту или выходу на замену. Статистика только за {{ team.name }}.
+                </p>
+            </div>
+        </div>
+
+        {% if squad %}
+            <table class="table team-players-table">
+                <thead>
+                    <tr>
+                        <th style="width:40px;">№</th>
+                        <th>Игрок</th>
+                        <th>Амплуа</th>
+                        <th class="cell-num">Игры</th>
+                        <th class="cell-num">Голы</th>
+                        <th class="cell-num">Пасы</th>
+                        <th class="cell-num">ЖК</th>
+                        <th class="cell-num">КК</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in squad %}
+                        <tr>
+                            <td class="cell-num">{{ row.number|default:"" }}</td>
+                            <td>
+                                <a href="{% url 'player_detail' row.tp.player.id %}" class="link">
+                                    {{ row.tp.player.first_name }} {{ row.tp.player.last_name }}
+                                </a>
+                            </td>
+                            <td>
+                                {% if row.tp.player.position %}
+                                    {{ row.tp.player.get_position_display }}
+                                {% else %}
+                                    <span class="muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="cell-num">{{ row.games }}</td>
+                            <td class="cell-num strong">{{ row.goals }}</td>
+                            <td class="cell-num strong">{{ row.assists }}</td>
+                            <td class="cell-num">{{ row.yellow }}</td>
+                            <td class="cell-num">{{ row.red }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="muted">В этой команде ещё нет игроков.</p>
+        {% endif %}
+    </section>
+
+    <!-- ПРАВАЯ КОЛОНКА: МАТЧИ КОМАНДЫ -->
+    <section class="team-block">
+        <div class="team-block-header">
+            <div>
+                <h2 class="team-block-title">Матчи команды</h2>
+                <p class="team-block-subtitle">
+                    Последние игры с участием {{ team.name }}
+                </p>
+            </div>
+            <div>
+                <a href="{% url 'match_list' %}" class="btn btn-ghost btn-small">
+                    Все матчи
+                </a>
+            </div>
+        </div>
+
+        {% if matches %}
+            <table class="table team-matches-table">
+                <thead>
+                    <tr>
+                        <th>Дата</th>
+                        <th>Матч</th>
+                        <th class="cell-num">Счёт</th>
+                        <th>Статус</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in matches %}
+                        <tr>
+                            <td>{{ m.date|date:"d.m.Y H:i" }}</td>
+                            <td>
+                                <a href="{% url 'match_detail' m.id %}" class="link">
+                                    {{ m.home_team.name }} — {{ m.away_team.name }}
+                                </a>
+                            </td>
+                            <td class="cell-num">
+                                {% if m.home_goals is not None and m.away_goals is not None %}
+                                    {{ m.home_goals }} : {{ m.away_goals }}
+                                {% else %}
+                                    - : -
+                                {% endif %}
+                            </td>
+                            <td>{{ m.get_status_display }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="muted">Матчей с участием этой команды пока нет.</p>
+        {% endif %}
+    </section>
+
+</div>
+
+{% endblock %}

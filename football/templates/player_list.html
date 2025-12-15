@@ -1,0 +1,256 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Игроки{% endblock %}
+
+{% block content %}
+<div class="panel">
+
+    <div class="teams-header">
+        <div>
+            <h1 class="teams-title">Игроки</h1>
+            <p class="teams-subtitle">
+                Все игроки лиги и их суммарная статистика
+            </p>
+        </div>
+        <div>
+            <a href="{% url 'player_create' %}" class="btn btn-primary">
+                + Добавить игрока
+            </a>
+        </div>
+    </div>
+
+    <!-- Фильтры -->
+    <form method="get"
+          style="margin-bottom: 10px; display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap;">
+
+        <div style="min-width:220px;">
+            <label class="form-label">Поиск по имени</label>
+            <input
+                type="text"
+                name="search"
+                value="{{ search }}"
+                placeholder="Имя или фамилия"
+                class="form-input"
+            >
+        </div>
+
+        <div>
+            <label class="form-label">Позиция</label>
+            <select name="position" class="form-select">
+                <option value="">Все</option>
+                {% for code, label in positions %}
+                    <option value="{{ code }}"
+                        {% if position == code %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label class="form-label">Команда</label>
+            <select name="team" class="form-select">
+                <option value="">Все</option>
+                {% for t in teams_filter %}
+                    <option value="{{ t.id }}"
+                        {% if team_id|add:""|stringformat:"s" == t.id|add:""|stringformat:"s" %}selected{% endif %}>
+                        {{ t.name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label class="form-label">Мин. голы</label>
+            <input type="number" min="0" name="min_goals"
+                   value="{{ min_goals }}"
+                   class="form-input" style="max-width:80px;">
+        </div>
+
+        <div>
+            <label class="form-label">Мин. ассисты</label>
+            <input type="number" min="0" name="min_assists"
+                   value="{{ min_assists }}"
+                   class="form-input" style="max-width:80px;">
+        </div>
+
+        <div>
+            <label class="form-label">Мин. ЖК</label>
+            <input type="number" min="0" name="min_yellow"
+                   value="{{ min_yellow }}"
+                   class="form-input" style="max-width:80px;">
+        </div>
+
+        <div>
+            <label class="form-label">Мин. КК</label>
+            <input type="number" min="0" name="min_red"
+                   value="{{ min_red }}"
+                   class="form-input" style="max-width:80px;">
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:4px;">
+            <label class="form-label">&nbsp;</label>
+            <label style="font-size:13px;">
+                <input type="checkbox" name="with_team" value="1"
+                       {% if with_team == '1' %}checked{% endif %}>
+                Только с командой
+            </label>
+        </div>
+
+        <div style="display:flex; gap:6px; align-items:flex-end;">
+            <button type="submit" class="btn btn-ghost btn-small" style="margin-bottom:1px;">
+                Применить
+            </button>
+            <a href="{% url 'player_list' %}" class="btn btn-ghost btn-small" style="margin-bottom:1px;">
+                Сбросить
+            </a>
+        </div>
+    </form>
+
+    {% if players %}
+        <table class="table players-table">
+            <thead>
+            <tr>
+                <th>#</th>
+
+                <!-- Игрок (сортировка по фамилии) -->
+                <th>
+                    <a href="?search={{ search }}&position={{ position }}&team={{ team_id }}&min_goals={{ min_goals }}&min_assists={{ min_assists }}&min_yellow={{ min_yellow }}&min_red={{ min_red }}&with_team={{ with_team }}&sort=last_name&order={% if sort == 'last_name' and order == 'asc' %}desc{% else %}asc{% endif %}"
+                       class="link">
+                        Игрок
+                        {% if sort == 'last_name' %}
+                            {% if order == 'asc' %}▲{% else %}▼{% endif %}
+                        {% endif %}
+                    </a>
+                </th>
+
+                <!-- Команда -->
+                <th>
+                    <a href="?search={{ search }}&position={{ position }}&team={{ team_id }}&min_goals={{ min_goals }}&min_assists={{ min_assists }}&min_yellow={{ min_yellow }}&min_red={{ min_red }}&with_team={{ with_team }}&sort=team&order={% if sort == 'team' and order == 'asc' %}desc{% else %}asc{% endif %}"
+                       class="link">
+                        Команда
+                        {% if sort == 'team' %}
+                            {% if order == 'asc' %}▲{% else %}▼{% endif %}
+                        {% endif %}
+                    </a>
+                </th>
+
+                <!-- Позиция -->
+                <th>
+                    <a href="?search={{ search }}&position={{ position }}&team={{ team_id }}&min_goals={{ min_goals }}&min_assists={{ min_assists }}&min_yellow={{ min_yellow }}&min_red={{ min_red }}&with_team={{ with_team }}&sort=position&order={% if sort == 'position' and order == 'asc' %}desc{% else %}asc{% endif %}"
+                       class="link">
+                        Позиция
+                        {% if sort == 'position' %}
+                            {% if order == 'asc' %}▲{% else %}▼{% endif %}
+                        {% endif %}
+                    </a>
+                </th>
+
+                <!-- Матчи -->
+                <th class="cell-num">
+                    <a href="?search={{ search }}&position={{ position }}&team={{ team_id }}&min_goals={{ min_goals }}&min_assists={{ min_assists }}&min_yellow={{ min_yellow }}&min_red={{ min_red }}&with_team={{ with_team }}&sort=matches&order={% if sort == 'matches' and order == 'asc' %}desc{% else %}asc{% endif %}"
+                       class="link">
+                        Матчи
+                        {% if sort == 'matches' %}
+                            {% if order == 'asc' %}▲{% else %}▼{% endif %}
+                        {% endif %}
+                    </a>
+                </th>
+
+                <!-- Голы -->
+                <th class="cell-num">
+                    <a href="?search={{ search }}&position={{ position }}&team={{ team_id }}&min_goals={{ min_goals }}&min_assists={{ min_assists }}&min_yellow={{ min_yellow }}&min_red={{ min_red }}&with_team={{ with_team }}&sort=goals&order={% if sort == 'goals' and order == 'asc' %}desc{% else %}asc{% endif %}"
+                       class="link">
+                        Голы
+                        {% if sort == 'goals' %}
+                            {% if order == 'asc' %}▲{% else %}▼{% endif %}
+                        {% endif %}
+                    </a>
+                </th>
+
+                <!-- Ассисты -->
+                <th class="cell-num">
+                    <a href="?search={{ search }}&position={{ position }}&team={{ team_id }}&min_goals={{ min_goals }}&min_assists={{ min_assists }}&min_yellow={{ min_yellow }}&min_red={{ min_red }}&with_team={{ with_team }}&sort=assists&order={% if sort == 'assists' and order == 'asc' %}desc{% else %}asc{% endif %}"
+                       class="link">
+                        Ассисты
+                        {% if sort == 'assists' %}
+                            {% if order == 'asc' %}▲{% else %}▼{% endif %}
+                        {% endif %}
+                    </a>
+                </th>
+
+                <!-- ЖК -->
+                <th class="cell-num">
+                    <a href="?search={{ search }}&position={{ position }}&team={{ team_id }}&min_goals={{ min_goals }}&min_assists={{ min_assists }}&min_yellow={{ min_yellow }}&min_red={{ min_red }}&with_team={{ with_team }}&sort=yellow&order={% if sort == 'yellow' and order == 'asc' %}desc{% else %}asc{% endif %}"
+                       class="link">
+                        ЖК
+                        {% if sort == 'yellow' %}
+                            {% if order == 'asc' %}▲{% else %}▼{% endif %}
+                        {% endif %}
+                    </a>
+                </th>
+
+                <!-- КК -->
+                <th class="cell-num">
+                    <a href="?search={{ search }}&position={{ position }}&team={{ team_id }}&min_goals={{ min_goals }}&min_assists={{ min_assists }}&min_yellow={{ min_yellow }}&min_red={{ min_red }}&with_team={{ with_team }}&sort=red&order={% if sort == 'red' and order == 'asc' %}desc{% else %}asc{% endif %}"
+                       class="link">
+                        КК
+                        {% if sort == 'red' %}
+                            {% if order == 'asc' %}▲{% else %}▼{% endif %}
+                        {% endif %}
+                    </a>
+                </th>
+
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for p in players %}
+                <tr>
+                    <td class="cell-num">{{ forloop.counter }}</td>
+
+                    <td>
+                        <a href="{% url 'player_detail' p.id %}" class="link">
+                            {{ p.first_name }} {{ p.last_name }}
+                        </a>
+                    </td>
+
+                    <td>
+                        {% with tp=p.team_players.all.0 %}
+                            {% if tp %}
+                                {{ tp.team.name }}
+                            {% else %}
+                                <span class="muted">без команды</span>
+                            {% endif %}
+                        {% endwith %}
+                    </td>
+
+                    <td>
+                        {% if p.position %}
+                            {{ p.get_position_display }}
+                        {% else %}
+                            <span class="muted">-</span>
+                        {% endif %}
+                    </td>
+
+                    <td class="cell-num">{{ p.matches }}</td>
+                    <td class="cell-num strong">{{ p.goals }}</td>
+                    <td class="cell-num strong">{{ p.assists }}</td>
+                    <td class="cell-num">{{ p.yellow_cards }}</td>
+                    <td class="cell-num">{{ p.red_cards }}</td>
+
+                    <td class="cell-num">
+                        <a href="{% url 'player_edit' p.id %}" class="btn btn-ghost btn-small">
+                            ✏️
+                        </a>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="muted">Игроков пока нет.</p>
+    {% endif %}
+</div>
+{% endblock %}

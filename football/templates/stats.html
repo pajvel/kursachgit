@@ -1,0 +1,585 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Статистика игроков{% endblock %}
+
+{% block content %}
+
+<section class="panel">
+    <div class="panel-header" style="margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+        <div>
+            <h2 class="panel-title">Статистика игроков</h2>
+            <p class="panel-subtitle">
+                Бомбардиры, ассистенты, карточки. При равном показателе выше тот, у кого меньше матчей.
+            </p>
+        </div>
+        <a href="{% url 'index' %}" class="btn btn-ghost btn-small">
+            ← На главную
+        </a>
+    </div>
+
+    <!-- Вкладки -->
+    <div class="panel-block" style="margin-bottom:10px;">
+        <div class="event-type-pills">
+            {% with q_team=team_id q_pos=position %}
+                {% if q_team or q_pos %}
+                    {% with "&team="|add:q_team as tparam %}
+                        {% with "&position="|add:q_pos as pparam %}
+                            <a href="?tab=overview{{ tparam }}{{ pparam }}"
+                               class="event-pill {% if tab == 'overview' %}active{% endif %}">
+                                Главная
+                            </a>
+                            <a href="?tab=goals{{ tparam }}{{ pparam }}"
+                               class="event-pill {% if tab == 'goals' %}active{% endif %}">
+                                Бомбардиры
+                            </a>
+                            <a href="?tab=assists{{ tparam }}{{ pparam }}"
+                               class="event-pill {% if tab == 'assists' %}active{% endif %}">
+                                Ассистенты
+                            </a>
+                            <a href="?tab=yellow{{ tparam }}{{ pparam }}"
+                               class="event-pill {% if tab == 'yellow' %}active{% endif %}">
+                                Жёлтые карточки
+                            </a>
+                            <a href="?tab=red{{ tparam }}{{ pparam }}"
+                               class="event-pill {% if tab == 'red' %}active{% endif %}">
+                                Красные карточки
+                            </a>
+                        {% endwith %}
+                    {% endwith %}
+                {% else %}
+                    <a href="?tab=overview"
+                       class="event-pill {% if tab == 'overview' %}active{% endif %}">
+                        Главная
+                    </a>
+                    <a href="?tab=goals"
+                       class="event-pill {% if tab == 'goals' %}active{% endif %}">
+                        Бомбардиры
+                    </a>
+                    <a href="?tab=assists"
+                       class="event-pill {% if tab == 'assists' %}active{% endif %}">
+                        Ассистенты
+                    </a>
+                    <a href="?tab=yellow"
+                       class="event-pill {% if tab == 'yellow' %}active{% endif %}">
+                        Жёлтые карточки
+                    </a>
+                    <a href="?tab=red"
+                       class="event-pill {% if tab == 'red' %}active{% endif %}">
+                        Красные карточки
+                    </a>
+                {% endif %}
+            {% endwith %}
+        </div>
+    </div>
+
+    <!-- Фильтры -->
+    <div class="panel-block" style="margin-bottom:14px;">
+        <form method="get" class="form-body" style="flex-direction:row; flex-wrap:wrap; gap:10px; align-items:flex-end;">
+            <input type="hidden" name="tab" value="{{ tab }}">
+
+            <div class="form-row" style="min-width:200px; max-width:260px;">
+                <label class="form-label" for="id_team_filter">Команда</label>
+
+                    <select name="team" id="id_team_filter" class="form-select">
+                        <option value="">Все команды</option>
+                        {% for t in teams %}
+                            <option value="{{ t.id }}"
+                                {% if team_id == t.id|stringformat:"s" %}selected{% endif %}>
+                                {{ t.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+
+            </div>
+
+            <div class="form-row" style="min-width:200px; max-width:260px;">
+                <label class="form-label" for="id_position_filter">Позиция</label>
+
+                    <select name="position" id="id_position_filter" class="form-select">
+                        <option value="">Любая позиция</option>
+                        {% for code, label in positions %}
+                            <option value="{{ code }}"
+                                {% if position == code %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+            </div>
+
+            <div class="form-row">
+                <label class="form-label">&nbsp;</label>
+                <div style="display:flex; gap:6px;">
+                    <button type="submit" class="btn btn-small btn-primary">
+                        Применить
+                    </button>
+                    {% if team_id or position %}
+                        <a href="?tab={{ tab }}" class="btn btn-small btn-ghost">
+                            Сбросить
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Содержимое вкладок -->
+
+    {% if tab == 'overview' %}
+
+        <div class="panel-block">
+            <div class="cards-block">
+
+                <!-- Бомбардиры -->
+                <div class="team-block">
+                    <div class="team-block-header">
+                        <h3 class="team-block-title">Бомбардиры</h3>
+                        <p class="team-block-subtitle">ТОП-3 по голам</p>
+                    </div>
+                    <ol class="stat-ranking-list">
+                        {% for p in top_scorers %}
+                            <li class="stat-ranking-item {% if forloop.counter == 1 %}top1{% elif forloop.counter == 2 %}top2{% elif forloop.counter == 3 %}top3{% endif %}">
+                                <div class="stat-rank-badge">{{ forloop.counter }}</div>
+
+                                {% with p.team_players.all.0 as tp %}
+                                <div class="stat-player">
+                                    <div class="stat-player-avatar">
+                                        <div class="emblem-sm">
+                                            {% if tp and tp.team.emblem %}
+                                                <img src="{% static 'emblems/' %}{{ tp.team.emblem }}" alt="{{ tp.team.name }}">
+                                            {% elif tp %}
+                                                <span>{{ tp.team.name|slice:":2"|upper }}</span>
+                                            {% else %}
+                                                <span>??</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="stat-player-main">
+                                        <a href="{% url 'player_detail' p.id %}" class="link stat-player-name">
+                                            {{ p.first_name }} {{ p.last_name }}
+                                        </a>
+                                        <div class="stat-player-meta muted">
+                                            {% if tp %}
+                                                {{ tp.team.name }}
+                                            {% else %}
+                                                Без команды
+                                            {% endif %}
+                                            ·
+                                            {% if p.get_position_display %}
+                                                {{ p.get_position_display }}
+                                            {% else %}
+                                                без позиции
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endwith %}
+
+                                <div class="stat-side">
+                                    <div class="stat-value">
+                                        ⚽ {{ p.goals }}
+                                        <span>голов</span>
+                                    </div>
+                                    <div class="stat-games">
+                                        {{ p.games }} матч(ей)
+                                    </div>
+                                </div>
+                            </li>
+                        {% empty %}
+                            <li class="muted">Нет игроков с голами.</li>
+                        {% endfor %}
+                    </ol>
+                </div>
+
+                <!-- Ассистенты -->
+                <div class="team-block">
+                    <div class="team-block-header">
+                        <h3 class="team-block-title">Ассистенты</h3>
+                        <p class="team-block-subtitle">ТОП-3 по голевым передачам</p>
+                    </div>
+                    <ol class="stat-ranking-list">
+                        {% for p in top_assistants %}
+                            <li class="stat-ranking-item {% if forloop.counter == 1 %}top1{% elif forloop.counter == 2 %}top2{% elif forloop.counter == 3 %}top3{% endif %}">
+                                <div class="stat-rank-badge">{{ forloop.counter }}</div>
+
+                                {% with p.team_players.all.0 as tp %}
+                                <div class="stat-player">
+                                    <div class="stat-player-avatar">
+                                        <div class="emblem-sm">
+                                            {% if tp and tp.team.emblem %}
+                                                <img src="{% static 'emblems/' %}{{ tp.team.emblem }}" alt="{{ tp.team.name }}">
+                                            {% elif tp %}
+                                                <span>{{ tp.team.name|slice:":2"|upper }}</span>
+                                            {% else %}
+                                                <span>??</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="stat-player-main">
+                                        <a href="{% url 'player_detail' p.id %}" class="link stat-player-name">
+                                            {{ p.first_name }} {{ p.last_name }}
+                                        </a>
+                                        <div class="stat-player-meta muted">
+                                            {% if tp %}
+                                                {{ tp.team.name }}
+                                            {% else %}
+                                                Без команды
+                                            {% endif %}
+                                            ·
+                                            {% if p.get_position_display %}
+                                                {{ p.get_position_display }}
+                                            {% else %}
+                                                без позиции
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endwith %}
+
+                                <div class="stat-side">
+                                    <div class="stat-value">
+                                        🎯 {{ p.assists }}
+                                        <span>передач</span>
+                                    </div>
+                                    <div class="stat-games">
+                                        {{ p.games }} матч(ей)
+                                    </div>
+                                </div>
+                            </li>
+                        {% empty %}
+                            <li class="muted">Нет игроков с ассистами.</li>
+                        {% endfor %}
+                    </ol>
+                </div>
+
+                <!-- Жёлтые карточки -->
+                <div class="team-block">
+                    <div class="team-block-header">
+                        <h3 class="team-block-title">Жёлтые карточки</h3>
+                        <p class="team-block-subtitle">ТОП-3 по ЖК</p>
+                    </div>
+                    <ol class="stat-ranking-list">
+                        {% for p in top_yellow %}
+                            <li class="stat-ranking-item {% if forloop.counter == 1 %}top1{% elif forloop.counter == 2 %}top2{% elif forloop.counter == 3 %}top3{% endif %}">
+                                <div class="stat-rank-badge">{{ forloop.counter }}</div>
+
+                                {% with p.team_players.all.0 as tp %}
+                                <div class="stat-player">
+                                    <div class="stat-player-avatar">
+                                        <div class="emblem-sm">
+                                            {% if tp and tp.team.emblem %}
+                                                <img src="{% static 'emblems/' %}{{ tp.team.emblem }}" alt="{{ tp.team.name }}">
+                                            {% elif tp %}
+                                                <span>{{ tp.team.name|slice:":2"|upper }}</span>
+                                            {% else %}
+                                                <span>??</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="stat-player-main">
+                                        <a href="{% url 'player_detail' p.id %}" class="link stat-player-name">
+                                            {{ p.first_name }} {{ p.last_name }}
+                                        </a>
+                                        <div class="stat-player-meta muted">
+                                            {% if tp %}
+                                                {{ tp.team.name }}
+                                            {% else %}
+                                                Без команды
+                                            {% endif %}
+                                            ·
+                                            {% if p.get_position_display %}
+                                                {{ p.get_position_display }}
+                                            {% else %}
+                                                без позиции
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endwith %}
+
+                                <div class="stat-side">
+                                    <div class="stat-value">
+                                        🟨 {{ p.yellow_cards }}
+                                        <span>ЖК</span>
+                                    </div>
+                                    <div class="stat-games">
+                                        {{ p.games }} матч(ей)
+                                    </div>
+                                </div>
+                            </li>
+                        {% empty %}
+                            <li class="muted">Нет жёлтых карточек.</li>
+                        {% endfor %}
+                    </ol>
+                </div>
+
+                <!-- Красные карточки -->
+                <div class="team-block">
+                    <div class="team-block-header">
+                        <h3 class="team-block-title">Красные карточки</h3>
+                        <p class="team-block-subtitle">ТОП-3 по КК</p>
+                    </div>
+                    <ol class="stat-ranking-list">
+                        {% for p in top_red %}
+                            <li class="stat-ranking-item {% if forloop.counter == 1 %}top1{% elif forloop.counter == 2 %}top2{% elif forloop.counter == 3 %}top3{% endif %}">
+                                <div class="stat-rank-badge">{{ forloop.counter }}</div>
+
+                                {% with p.team_players.all.0 as tp %}
+                                <div class="stat-player">
+                                    <div class="stat-player-avatar">
+                                        <div class="emblem-sm">
+                                            {% if tp and tp.team.emblem %}
+                                                <img src="{% static 'emblems/' %}{{ tp.team.emblem }}" alt="{{ tp.team.name }}">
+                                            {% elif tp %}
+                                                <span>{{ tp.team.name|slice:":2"|upper }}</span>
+                                            {% else %}
+                                                <span>??</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="stat-player-main">
+                                        <a href="{% url 'player_detail' p.id %}" class="link stat-player-name">
+                                            {{ p.first_name }} {{ p.last_name }}
+                                        </a>
+                                        <div class="stat-player-meta muted">
+                                            {% if tp %}
+                                                {{ tp.team.name }}
+                                            {% else %}
+                                                Без команды
+                                            {% endif %}
+                                            ·
+                                            {% if p.get_position_display %}
+                                                {{ p.get_position_display }}
+                                            {% else %}
+                                                без позиции
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endwith %}
+
+                                <div class="stat-side">
+                                    <div class="stat-value">
+                                        🟥 {{ p.red_cards }}
+                                        <span>КК</span>
+                                    </div>
+                                    <div class="stat-games">
+                                        {{ p.games }} матч(ей)
+                                    </div>
+                                </div>
+                            </li>
+                        {% empty %}
+                            <li class="muted">Нет красных карточек.</li>
+                        {% endfor %}
+                    </ol>
+                </div>
+
+            </div>
+        </div>
+
+    {% else %}
+        {# конкретная вкладка: бомбардиры / ассистенты / карточки #}
+        <div class="panel-block">
+            <h3 class="team-block-title" style="margin-bottom:6px;">
+                {% if tab == 'goals' %}Бомбардиры{% endif %}
+                {% if tab == 'assists' %}Ассистенты{% endif %}
+                {% if tab == 'yellow' %}Жёлтые карточки{% endif %}
+                {% if tab == 'red' %}Красные карточки{% endif %}
+            </h3>
+            <p class="team-block-subtitle" style="margin-bottom:10px;">
+                ТОП-10 игроков по показателю: {{ metric_label }}.
+                Сначала по значению, при равенстве — меньше матчей.
+            </p>
+
+            <ol class="stat-ranking-list stat-ranking-list-wide">
+                {% for p in players_list %}
+                    <li class="stat-ranking-item {% if forloop.counter == 1 %}top1{% elif forloop.counter == 2 %}top2{% elif forloop.counter == 3 %}top3{% endif %}">
+                        <div class="stat-rank-badge">{{ forloop.counter }}</div>
+
+                        {% with p.team_players.all.0 as tp %}
+                        <div class="stat-player">
+                            <div class="stat-player-avatar">
+                                <div class="emblem-sm">
+                                    {% if tp and tp.team.emblem %}
+                                        <img src="{% static 'emblems/' %}{{ tp.team.emblem }}" alt="{{ tp.team.name }}">
+                                    {% elif tp %}
+                                        <span>{{ tp.team.name|slice:":2"|upper }}</span>
+                                    {% else %}
+                                        <span>??</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="stat-player-main">
+                                <a href="{% url 'player_detail' p.id %}" class="link stat-player-name">
+                                    {{ p.first_name }} {{ p.last_name }}
+                                </a>
+                                <div class="stat-player-meta muted">
+                                    {% if tp %}
+                                        {{ tp.team.name }}
+                                    {% else %}
+                                        Без команды
+                                    {% endif %}
+                                    ·
+                                    {% if p.get_position_display %}
+                                        {{ p.get_position_display }}
+                                    {% else %}
+                                        без позиции
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endwith %}
+
+                        <div class="stat-side stat-side-big">
+                            <div class="stat-value stat-value-big">
+                                {% if tab == 'goals' %}⚽ {{ p.goals }}{% endif %}
+                                {% if tab == 'assists' %}🎯 {{ p.assists }}{% endif %}
+                                {% if tab == 'yellow' %}🟨 {{ p.yellow_cards }}{% endif %}
+                                {% if tab == 'red' %}🟥 {{ p.red_cards }}{% endif %}
+                                <span>{{ metric_label }}</span>
+                            </div>
+                            <div class="stat-games">
+                                {{ p.games }} матч(ей)
+                            </div>
+                        </div>
+                    </li>
+                {% empty %}
+                    <li class="muted">Для выбранных фильтров нет данных.</li>
+                {% endfor %}
+            </ol>
+        </div>
+    {% endif %}
+
+</section>
+
+<!-- Локальные стили только для этой страницы -->
+<style>
+    .stat-ranking-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .stat-ranking-list-wide {
+        max-width: 720px;
+        margin: 0 auto;
+    }
+
+    .stat-ranking-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 10px;
+        border-radius: 10px;
+        border: 1px solid #e5e7eb;
+        background-color: #ffffff;
+        box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+        font-size: 12px;
+    }
+
+    .stat-ranking-item.top1 {
+        border-color: #22c55e;
+        box-shadow: 0 0 0 1px #bbf7d0, 0 4px 12px rgba(22, 163, 74, 0.2);
+    }
+    .stat-ranking-item.top2 {
+        border-color: #a7f3d0;
+    }
+    .stat-ranking-item.top3 {
+        border-color: #d1fae5;
+    }
+
+    .stat-rank-badge {
+        width: 26px;
+        height: 26px;
+        border-radius: 999px;
+        background-color: #ecfdf5;
+        border: 1px solid #bbf7d0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: 700;
+        color: #166534;
+        flex-shrink: 0;
+    }
+
+    .stat-player {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .stat-player-avatar {
+        flex-shrink: 0;
+    }
+
+    .stat-player-main {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+    }
+
+    .stat-player-name {
+        font-size: 13px;
+        font-weight: 500;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        display: inline-block;
+        max-width: 220px;
+    }
+
+    .stat-player-meta {
+        font-size: 11px;
+    }
+
+    .stat-side {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 2px;
+        font-size: 11px;
+        min-width: 100px;
+        border-left: 1px solid #e5e7eb;
+        padding-left: 8px;
+    }
+
+    .stat-side-big {
+        min-width: 120px;
+    }
+
+    .stat-value {
+        font-size: 14px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .stat-value span {
+        font-size: 10px;
+        margin-left: 4px;
+        color: #6b7280;
+    }
+
+    .stat-value-big {
+        font-size: 18px;
+        line-height: 1.1;
+    }
+
+    .stat-value-big span {
+        display: block;
+        margin: 0;
+    }
+
+    .stat-games {
+        color: #6b7280;
+        font-size: 11px;
+    }
+</style>
+
+{% endblock %}

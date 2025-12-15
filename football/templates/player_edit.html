@@ -1,0 +1,188 @@
+{% extends 'base.html' %}
+
+{% block title %}Редактирование: {{ player.first_name }} {{ player.last_name }}{% endblock %}
+
+{% block content %}
+
+<section class="form-panel">
+    <div class="form-header">
+        <h1 class="form-title">
+            Редактирование игрока · {{ player.first_name }} {{ player.last_name }}
+        </h1>
+        <p class="form-subtitle">
+            Измени персональные данные и при необходимости команду игрока.
+        </p>
+    </div>
+
+    {% if form.non_field_errors %}
+        <div class="form-errors">
+            {{ form.non_field_errors }}
+        </div>
+    {% endif %}
+
+    <!-- Форма данных игрока -->
+    <form method="post" style="margin-bottom:18px;">
+        {% csrf_token %}
+
+        <div class="form-body">
+            <div class="form-row">
+                <label class="form-label" for="{{ form.first_name.id_for_label }}">Имя</label>
+                {{ form.first_name }}
+            </div>
+            <div class="form-row">
+                <label class="form-label" for="{{ form.last_name.id_for_label }}">Фамилия</label>
+                {{ form.last_name }}
+            </div>
+            <div class="form-row">
+                <label class="form-label" for="{{ form.birth_date.id_for_label }}">Дата рождения</label>
+                {{ form.birth_date }}
+            </div>
+
+            <!-- Позиция: кнопки → в БД кладём короткий код (ВРТ, ЗАЩ, ПЗ, НАП) -->
+            <div class="form-row">
+                <label class="form-label">Амплуа</label>
+
+                <!-- сюда JS пишет код позиции -->
+                <input type="hidden" name="position" id="id_position"
+                       value="{{ player.position|default_if_none:'' }}">
+
+                <div class="position-pills">
+                    <button type="button"
+                            class="btn btn-ghost btn-small position-btn{% if player.position == 'ВРТ' %} position-btn-active{% endif %}"
+                            data-value="ВРТ">
+                        Вратарь
+                    </button>
+                    <button type="button"
+                            class="btn btn-ghost btn-small position-btn{% if player.position == 'ЗАЩ' %} position-btn-active{% endif %}"
+                            data-value="ЗАЩ">
+                        Защитник
+                    </button>
+                    <button type="button"
+                            class="btn btn-ghost btn-small position-btn{% if player.position == 'ПЗ' %} position-btn-active{% endif %}"
+                            data-value="ПЗ">
+                        Полузащитник
+                    </button>
+                    <button type="button"
+                            class="btn btn-ghost btn-small position-btn{% if player.position == 'НАП' %} position-btn-active{% endif %}"
+                            data-value="НАП">
+                        Нападающий
+                    </button>
+                </div>
+
+                <p class="form-help">Нажми на позицию, чтобы выбрать её. В БД уйдёт код (ВРТ / ЗАЩ / ПЗ / НАП).</p>
+            </div>
+        </div>
+
+        <div class="form-footer">
+            <a href="{% url 'player_detail' player.id %}" class="btn btn-ghost btn-small">
+                ← Назад к игроку
+            </a>
+            <!-- ВАЖНО: save_player, чтобы во view попала ветка сохранения игрока -->
+            <button type="submit" name="save_player" class="btn btn-primary btn-small">
+                💾 Сохранить данные
+            </button>
+        </div>
+    </form>
+
+</section>
+
+<!-- Отдельная панель для смены команды -->
+<section class="form-panel" style="margin-top:16px;">
+    <div class="form-header">
+        <h2 class="form-title">Команда игрока</h2>
+        <p class="form-subtitle">
+            Сейчас:
+            {% if current_team %}
+                <strong>{{ current_team.name }}</strong>
+            {% else %}
+                <span class="muted">без команды</span>
+            {% endif %}
+        </p>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="new_team_id" id="id_new_team_id">
+
+        {% if available_teams %}
+            <div class="team-choice-grid">
+                {% for t in available_teams %}
+                    <div class="team-choice-card
+                        {% if current_team and current_team.id == t.id %}active{% endif %}"
+                         data-team-id="{{ t.id }}">
+                        <div class="team-choice-emblem">
+                            {% load static %}
+                            {% if t.emblem %}
+                                <img src="{% static 'emblems/' %}{{ t.emblem }}" alt="{{ t.name }}">
+                            {% else %}
+                                <span>{{ t.name|slice:":2"|upper }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="team-choice-body">
+                            <div class="team-choice-name">{{ t.name }}</div>
+                            <div class="team-choice-tag">
+                                {% if t.city %}{{ t.city }}{% else %}Без города{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+            <p class="form-help">
+                Клик по карточке выберет / снимет команду. Чтобы оставить без команды — не выбирай ничего.
+            </p>
+        {% else %}
+            <p class="muted">Команды ещё не созданы.</p>
+        {% endif %}
+
+        <div class="form-footer">
+            <span class="muted">
+                Смена команды удаляет прежнюю привязку и создаёт новую.
+            </span>
+            <button type="submit" name="save_team" class="btn btn-primary btn-small">
+                🔄 Обновить команду
+            </button>
+        </div>
+    </form>
+</section>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Позиции
+    const posBtns  = document.querySelectorAll('.position-btn');
+    const posInput = document.getElementById('id_position');
+
+    posBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            posBtns.forEach(b => b.classList.remove('position-btn-active'));
+            btn.classList.add('position-btn-active');
+            posInput.value = btn.dataset.value;   // ВРТ / ЗАЩ / ПЗ / НАП
+        });
+    });
+
+    // Команды
+    const teamCards = document.querySelectorAll('.team-choice-card');
+    const teamInput = document.getElementById('id_new_team_id');
+    const currentTeamId = "{{ current_team.id|default:'' }}";
+
+    if (currentTeamId) {
+        teamInput.value = currentTeamId;
+    }
+
+    teamCards.forEach(card => {
+        card.addEventListener('click', () => {
+            const clickedId = card.dataset.teamId;
+
+            if (teamInput.value === clickedId) {
+                teamInput.value = '';
+                card.classList.remove('active');
+            } else {
+                teamCards.forEach(c => c.classList.remove('active'));
+                teamInput.value = clickedId;
+                card.classList.add('active');
+            }
+        });
+    });
+});
+</script>
+
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Удаление команды{% endblock %}
+
+{% block content %}
+<div class="delete-panel">
+    <h1 class="delete-title">Удалить команду?</h1>
+    <p class="delete-text">
+        Вы действительно хотите удалить команду
+        <strong>{{ team.name }}</strong>?
+        <br>
+        Состав и привязанные данные больше не будут связаны с этой командой.
+    </p>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="delete-footer">
+            <a href="{% url 'team_detail' team.id %}" class="btn btn-ghost btn-small">
+                Отмена
+            </a>
+            <button type="submit" class="btn btn-danger">
+                Да, удалить
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

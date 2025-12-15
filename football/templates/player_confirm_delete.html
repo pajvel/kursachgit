@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Удаление игрока{% endblock %}
+
+{% block content %}
+<div class="delete-panel">
+    <h1 class="delete-title">Удалить игрока?</h1>
+    <p class="delete-text">
+        Вы действительно хотите удалить игрока
+        <strong>{{ player.first_name }} {{ player.last_name }}</strong>?
+        <br>
+        Его статистика и участие в составе останутся в матчах, но самого игрока
+        больше нельзя будет редактировать.
+    </p>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="delete-footer">
+            <a href="{% url 'player_detail' player.id %}" class="btn btn-ghost btn-small">
+                Отмена
+            </a>
+            <button type="submit" class="btn btn-danger">
+                Да, удалить
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

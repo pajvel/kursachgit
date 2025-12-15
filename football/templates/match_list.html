@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Матчи{% endblock %}
+
+{% block content %}
+<div class="panel">
+
+    <div class="teams-header">
+        <div>
+            <h1 class="teams-title">Матчи</h1>
+            <p class="teams-subtitle">
+                все матчи лиги
+            </p>
+        </div>
+        <div>
+            <a href="{% url 'match_create' %}" class="btn btn-primary">
+                + Добавить матч
+            </a>
+        </div>
+    </div>
+
+    {% if matches %}
+        <table class="table team-matches-table">
+            <thead>
+            <tr>
+                <th>Дата</th>
+                <th colspan="3">Матч</th>
+                <th>Статус</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for m in matches %}
+                <tr>
+                    <td>{{ m.date|date:"d.m.Y H:i" }}</td>
+
+                    <!-- Хозяева -->
+                    <td style="width:35%;">
+                        <a href="{% url 'team_detail' m.home_team.id %}" class="link" style="display:flex; align-items:center; gap:6px;">
+                            <div class="emblem-sm">
+                                {% if m.home_team.emblem %}
+                                    <img src="{% static 'emblems/' %}{{ m.home_team.emblem }}" alt="{{ m.home_team.name }}">
+                                {% else %}
+                                    <span>{{ m.home_team.name|slice:":2"|upper }}</span>
+                                {% endif %}
+                            </div>
+                            <span>{{ m.home_team.name }}</span>
+                        </a>
+                    </td>
+
+                    <!-- Счёт -->
+                    <td class="cell-num" style="width:10%;">
+                        {% if m.home_goals != None and m.away_goals != None %}
+                            <span class="strong">{{ m.home_goals }} : {{ m.away_goals }}</span>
+                        {% else %}
+                            <span class="muted">vs</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Гости -->
+                    <td style="width:35%;">
+                        <a href="{% url 'team_detail' m.away_team.id %}" class="link" style="display:flex; align-items:center; justify-content:flex-end; gap:6px;">
+                            <span>{{ m.away_team.name }}</span>
+                            <div class="emblem-sm">
+                                {% if m.away_team.emblem %}
+                                    <img src="{% static 'emblems/' %}{{ m.away_team.emblem }}" alt="{{ m.away_team.name }}">
+                                {% else %}
+                                    <span>{{ m.away_team.name|slice:":2"|upper }}</span>
+                                {% endif %}
+                            </div>
+                        </a>
+                    </td>
+
+                    <td>{{ m.get_status_display }}</td>
+                    <td class="cell-num">
+                        <a href="{% url 'match_detail' m.id %}" class="btn btn-ghost btn-small">
+                            Открыть
+                        </a>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="muted">Матчей пока нет.</p>
+    {% endif %}
+</div>
+{% endblock %}

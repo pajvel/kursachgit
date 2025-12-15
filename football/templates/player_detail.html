@@ -1,0 +1,223 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ player.first_name }} {{ player.last_name }}{% endblock %}
+
+{% block content %}
+
+<!-- Шапка игрока -->
+<div class="team-header">
+    <div class="team-header-logo">
+        <span>
+            {{ player.first_name|slice:":1"|upper }}{{ player.last_name|slice:":1"|upper }}
+        </span>
+    </div>
+
+    <div class="team-header-main">
+        <div class="team-header-title-line">
+            <h1 class="team-header-name">
+                {{ player.first_name }} {{ player.last_name }}
+            </h1>
+            {% if player.position %}
+                <span class="team-header-short">
+                    {{ player.get_position_display }}
+                    {% if current_number %}
+                        · №{{ current_number }}
+                    {% endif %}
+                </span>
+            {% endif %}
+        </div>
+        <div class="team-header-meta">
+            {% if current_team %}
+                <span>Команда: {{ current_team.name }}</span>
+            {% else %}
+                <span class="muted">Без команды</span>
+            {% endif %}
+            {% if player.birth_date %}
+                · <span>Дата рождения: {{ player.birth_date|date:"d.m.Y" }}</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="team-header-actions">
+        <a href="{% url 'player_edit' player.id %}" class="btn btn-ghost btn-small">
+            ✏️ Редактировать
+        </a>
+        <a href="{% url 'player_delete' player.id %}" class="btn btn-danger btn-small">
+            🗑 Удалить
+        </a>
+    </div>
+</div>
+
+<div class="team-page-layout">
+    <!-- ЛЕВЫЙ БЛОК: общая статистика -->
+    <div>
+        <section class="team-block">
+            <div class="team-block-header">
+                <div>
+                    <h2 class="team-block-title">Общая статистика</h2>
+                    <p class="team-block-subtitle">
+                        по всем матчам, в которых есть события / выходы в старт
+                    </p>
+                </div>
+            </div>
+
+            <div class="team-stats-list">
+                <div class="team-stat-row">
+                    <span>Матчей</span>
+                    <span class="strong">{{ total_matches }}</span>
+                </div>
+                <div class="team-stat-row">
+                    <span>В старте</span>
+                    <span class="strong">{{ starts_count }}</span>
+                </div>
+                <div class="team-stat-row">
+                    <span>Голы</span>
+                    <span class="strong">{{ total_goals }}</span>
+                </div>
+                <div class="team-stat-row">
+                    <span>Ассисты</span>
+                    <span class="strong">{{ total_assists }}</span>
+                </div>
+                <div class="team-stat-row">
+                    <span>Жёлтые карточки</span>
+                    <span class="strong">{{ total_yellow }}</span>
+                </div>
+                <div class="team-stat-row">
+                    <span>Красные карточки</span>
+                    <span class="strong">{{ total_red }}</span>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- ПРАВЫЙ БЛОК: инфо -->
+    <div>
+        <section class="team-block">
+            <div class="team-block-header">
+                <div>
+                    <h2 class="team-block-title">Информация о игроке</h2>
+                    <p class="team-block-subtitle">
+                        базовые данные профиля
+                    </p>
+                </div>
+            </div>
+
+            <div class="team-stats-list">
+                <div class="team-stat-row">
+                    <span>Имя</span>
+                    <span class="strong">
+                        {{ player.first_name }} {{ player.last_name }}
+                    </span>
+                </div>
+                <div class="team-stat-row">
+                    <span>Позиция</span>
+                    <span class="strong">
+                        {% if player.position %}
+                            {{ player.get_position_display }}
+                        {% else %}
+                            <span class="muted">-</span>
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="team-stat-row">
+                    <span>Команда</span>
+                    <span class="strong">
+                        {% if current_team %}
+                            {{ current_team.name }}
+                        {% else %}
+                            <span class="muted">нет</span>
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="team-stat-row">
+                    <span>Номер в команде</span>
+                    <span class="strong">
+                        {% if current_team and current_number %}
+                            №{{ current_number }}
+                        {% elif current_team %}
+                            <span class="muted">не указан</span>
+                        {% else %}
+                            <span class="muted">—</span>
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="team-stat-row">
+                    <span>Дата рождения</span>
+                    <span class="strong">
+                        {% if player.birth_date %}
+                            {{ player.birth_date|date:"d.m.Y" }}
+                        {% else %}
+                            <span class="muted">не указано</span>
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<!-- Подробная статистика по матчам -->
+<section class="team-block" style="margin-top:14px;">
+    <div class="team-block-header">
+        <div>
+            <h2 class="team-block-title">Матчи игрока</h2>
+            <p class="team-block-subtitle">
+                старт / участие и результативные действия по каждому матчу
+            </p>
+        </div>
+    </div>
+
+    {% if matches_stats %}
+        <table class="table team-matches-table">
+            <thead>
+            <tr>
+                <th>Дата</th>
+                <th>Матч</th>
+                <th>Команда</th>
+                <th>Статус</th>
+                <th>Голы</th>
+                <th>Ассисты</th>
+                <th>ЖК</th>
+                <th>КК</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for row in matches_stats %}
+                <tr>
+                    <td>{{ row.match.date|date:"d.m.Y H:i" }}</td>
+                    <td>
+                        <a href="{% url 'match_detail' row.match.id %}" class="link">
+                            {{ row.match.home_team.name }} — {{ row.match.away_team.name }}
+                        </a>
+                    </td>
+                    <td>
+                        {% if row.team %}
+                            {{ row.team.name }}
+                        {% else %}
+                            <span class="muted">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if row.is_starting %}
+                            <span class="badge badge-soft">Старт</span>
+                        {% else %}
+                            <span class="badge">Играл</span>
+                        {% endif %}
+                    </td>
+                    <td class="cell-num strong">{{ row.goals }}</td>
+                    <td class="cell-num strong">{{ row.assists }}</td>
+                    <td class="cell-num">{{ row.yellow }}</td>
+                    <td class="cell-num">{{ row.red }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="muted">
+            Пока нет матчей с участием этого игрока (по событиям / протоколу).
+        </p>
+    {% endif %}
+</section>
+
+{% endblock %}

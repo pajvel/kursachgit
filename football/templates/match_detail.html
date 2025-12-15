@@ -1,0 +1,499 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ match.home_team.name }} — {{ match.away_team.name }}{% endblock %}
+
+{% block content %}
+
+<section class="team-block">
+
+    <!-- Заголовок -->
+<div class="team-block-header">
+    <div>
+        <h1 class="team-block-title">
+            <a href="{% url 'team_detail' match.home_team.id %}" class="link">
+                {{ match.home_team.name }}
+            </a>
+            —
+            <a href="{% url 'team_detail' match.away_team.id %}" class="link">
+                {{ match.away_team.name }}
+            </a>
+        </h1>
+        <p class="team-block-subtitle">
+            {{ match.date|date:"d.m.Y H:i" }} · {{ match.get_status_display }}
+        </p>
+    </div>
+
+    <div style="display:flex; gap:6px; align-items:center;">
+        <a href="{% url 'match_edit' match.id %}" class="btn btn-ghost btn-small">
+            ✏️ Редактировать матч
+        </a>
+
+        <a href="{% url 'match_delete' match.id %}" class="btn btn-danger btn-small">
+            🗑 Удалить матч
+        </a>
+    </div>
+</div>
+
+    <!-- Эмблемы слева/справа и счёт по центру -->
+    <div class="match-header-layout">
+
+        <!-- Хозяева -->
+        <div class="match-team-side">
+            <a href="{% url 'team_detail' match.home_team.id %}">
+                <div class="emblem-lg">
+                    {% if match.home_team.emblem %}
+                        <img src="{% static 'emblems/' %}{{ match.home_team.emblem }}" alt="{{ match.home_team.name }}">
+                    {% else %}
+                        <span>{{ match.home_team.name|slice:":2"|upper }}</span>
+                    {% endif %}
+                </div>
+            </a>
+            <a href="{% url 'team_detail' match.home_team.id %}" class="link muted">
+                {{ match.home_team.name }}
+            </a>
+        </div>
+
+        <!-- Счёт -->
+        <div class="match-score-main">
+            {% if match.status == 'завершён' or match.status == 'идёт' %}
+                <div class="match-score-main-value">
+                    {{ home_goals }} : {{ away_goals }}
+                </div>
+            {% else %}
+                <div class="match-score-main-value">
+                    - : -
+                </div>
+            {% endif %}
+            <div class="match-score-main-status">
+                {{ match.get_status_display }}
+            </div>
+        </div>
+
+        <!-- Гости -->
+        <div class="match-team-side">
+            <a href="{% url 'team_detail' match.away_team.id %}">
+                <div class="emblem-lg">
+                    {% if match.away_team.emblem %}
+                        <img src="{% static 'emblems/' %}{{ match.away_team.emblem }}" alt="{{ match.away_team.name }}">
+                    {% else %}
+                        <span>{{ match.away_team.name|slice:":2"|upper }}</span>
+                    {% endif %}
+                </div>
+            </a>
+            <a href="{% url 'team_detail' match.away_team.id %}" class="link muted">
+                {{ match.away_team.name }}
+            </a>
+        </div>
+
+    </div>
+
+    <!-- События по центру, разделённые по командам -->
+    <div class="match-events-center">
+        {% if home_events_display or away_events_display %}
+            <div class="match-events-inner">
+
+                <!-- Левая колонка: хозяева -->
+                <div class="event-col-left">
+                    <div class="muted" style="font-size:12px; margin-bottom:4px; text-align:right;">
+                        События {{ match.home_team.name }}
+                    </div>
+
+                    {% for ev in home_events_display %}
+                        <div class="event-row-mid" style="justify-content:flex-end;">
+                            <span class="event-minute">
+                                {{ ev.minute }}'{% if ev.added %}+{{ ev.added }}{% endif %}
+                            </span>
+
+                            {% if ev.kind == 'goal' %}
+                                <span class="event-type">
+                                    {% if ev.is_penalty %}
+                                        ⚽ (пен.)
+                                    {% else %}
+                                        ⚽
+                                    {% endif %}
+                                </span>
+                                <span class="event-player">
+                                    {% if ev.player %}
+                                        <a href="{% url 'player_detail' ev.player.id %}" class="link">
+                                            {{ ev.player.first_name }} {{ ev.player.last_name }}
+                                        </a>
+                                    {% endif %}
+                                    {% if ev.assist %}
+                                        <span class="muted">
+                                            (пас:
+                                            <a href="{% url 'player_detail' ev.assist.id %}" class="link">
+                                                {{ ev.assist.first_name }} {{ ev.assist.last_name }}
+                                            </a>
+                                            )
+                                        </span>
+                                    {% endif %}
+                                </span>
+
+                            {% elif ev.kind == 'own_goal' %}
+                                <span class="event-type">🥅 (автогол)</span>
+                                <span class="event-player">
+                                    {% if ev.player %}
+                                        <a href="{% url 'player_detail' ev.player.id %}" class="link">
+                                            {{ ev.player.first_name }} {{ ev.player.last_name }}
+                                        </a>
+                                    {% endif %}
+                                </span>
+
+                            {% elif ev.kind == 'card' %}
+                                <span class="event-type">
+                                    {% if ev.card == 'yellow' %}🟨{% else %}🟥{% endif %}
+                                </span>
+                                <span class="event-player">
+                                    {% if ev.player %}
+                                        <a href="{% url 'player_detail' ev.player.id %}" class="link">
+                                            {{ ev.player.first_name }} {{ ev.player.last_name }}
+                                        </a>
+                                    {% endif %}
+                                </span>
+
+                            {% elif ev.kind == 'sub' %}
+                                <span class="event-type">🔁</span>
+                                <span class="event-player">
+                                    {% if ev.player_out %}
+                                        <a href="{% url 'player_detail' ev.player_out.id %}" class="link">
+                                            {{ ev.player_out.first_name }} {{ ev.player_out.last_name }}
+                                        </a>
+                                    {% endif %}
+                                    {% if ev.player_in %}
+                                        <span class="muted"> ⟵ </span>
+                                        <a href="{% url 'player_detail' ev.player_in.id %}" class="link">
+                                            {{ ev.player_in.first_name }} {{ ev.player_in.last_name }}
+                                        </a>
+                                    {% endif %}
+                                </span>
+                            {% endif %}
+                        </div>
+                    {% empty %}
+                        <div class="event-row-mid muted" style="justify-content:flex-end;">
+                            Без событий
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Правая колонка: гости -->
+                <div class="event-col-right">
+                    <div class="muted" style="font-size:12px; margin-bottom:4px;">
+                        События {{ match.away_team.name }}
+                    </div>
+
+                    {% for ev in away_events_display %}
+                        <div class="event-row-mid">
+                            <span class="event-minute">
+                                {{ ev.minute }}'{% if ev.added %}+{{ ev.added }}{% endif %}
+                            </span>
+
+                            {% if ev.kind == 'goal' %}
+                                <span class="event-type">
+                                    {% if ev.is_penalty %}
+                                        ⚽ (пен.)
+                                    {% else %}
+                                        ⚽
+                                    {% endif %}
+                                </span>
+                                <span class="event-player">
+                                    {% if ev.player %}
+                                        <a href="{% url 'player_detail' ev.player.id %}" class="link">
+                                            {{ ev.player.first_name }} {{ ev.player.last_name }}
+                                        </a>
+                                    {% endif %}
+                                    {% if ev.assist %}
+                                        <span class="muted">
+                                            (пас:
+                                            <a href="{% url 'player_detail' ev.assist.id %}" class="link">
+                                                {{ ev.assist.first_name }} {{ ev.assist.last_name }}
+                                            </a>
+                                            )
+                                        </span>
+                                    {% endif %}
+                                </span>
+
+                            {% elif ev.kind == 'own_goal' %}
+                                <span class="event-type">🥅 (автогол)</span>
+                                <span class="event-player">
+                                    {% if ev.player %}
+                                        <a href="{% url 'player_detail' ev.player.id %}" class="link">
+                                            {{ ev.player.first_name }} {{ ev.player.last_name }}
+                                        </a>
+                                    {% endif %}
+                                </span>
+
+                            {% elif ev.kind == 'card' %}
+                                <span class="event-type">
+                                    {% if ev.card == 'yellow' %}🟨{% else %}🟥{% endif %}
+                                </span>
+                                <span class="event-player">
+                                    {% if ev.player %}
+                                        <a href="{% url 'player_detail' ev.player.id %}" class="link">
+                                            {{ ev.player.first_name }} {{ ev.player.last_name }}
+                                        </a>
+                                    {% endif %}
+                                </span>
+
+                            {% elif ev.kind == 'sub' %}
+                                <span class="event-type">🔁</span>
+                                <span class="event-player">
+                                    {% if ev.player_out %}
+                                        <a href="{% url 'player_detail' ev.player_out.id %}" class="link">
+                                            {{ ev.player_out.first_name }} {{ ev.player_out.last_name }}
+                                        </a>
+                                    {% endif %}
+                                    {% if ev.player_in %}
+                                        <span class="muted"> ⟵ </span>
+                                        <a href="{% url 'player_detail' ev.player_in.id %}" class="link">
+                                            {{ ev.player_in.first_name }} {{ ev.player_in.last_name }}
+                                        </a>
+                                    {% endif %}
+                                </span>
+                            {% endif %}
+                        </div>
+                    {% empty %}
+                        <div class="event-row-mid muted">
+                            Без событий
+                        </div>
+                    {% endfor %}
+                </div>
+
+            </div>
+        {% else %}
+            <p class="muted">Событий пока нет.</p>
+        {% endif %}
+    </div>
+
+</section>
+
+<!-- Составы: две колонки, у каждой Старт и Запас -->
+<div class="match-lineups-grid">
+
+    <!-- Хозяева -->
+    <section class="team-block match-lineup-side">
+        <div class="team-block-header">
+            <h2 class="team-block-title">Состав {{ match.home_team.name }}</h2>
+        </div>
+
+        <!-- Стартовый состав -->
+        <h3 class="team-block-title" style="font-size:14px; margin:4px 0 6px;">
+            Стартовый состав
+        </h3>
+        {% if home_starters %}
+            <table class="table team-players-table">
+                <thead>
+                    <tr>
+                        <th style="width:40px;">№</th>
+                        <th>Игрок</th>
+                        <th>Амплуа</th>
+                        <th class="cell-num">Голы</th>
+                        <th class="cell-num">Пасы</th>
+                        <th class="cell-num">ЖК</th>
+                        <th class="cell-num">КК</th>
+                        <th class="cell-num">Замена</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in home_starters %}
+                        <tr>
+                            <td class="cell-num">{{ row.number|default:"" }}</td>
+                            <td>
+                                <a href="{% url 'player_detail' row.player.id %}" class="link">
+                                    {{ row.player.first_name }} {{ row.player.last_name }}
+                                </a>
+                            </td>
+                            <td>
+                                {% if row.player.position %}
+                                    {{ row.player.get_position_display }}
+                                {% else %}
+                                    <span class="muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="cell-num strong">{{ row.goals }}</td>
+                            <td class="cell-num strong">{{ row.assists }}</td>
+                            <td class="cell-num">{{ row.yellow }}</td>
+                            <td class="cell-num">{{ row.red }}</td>
+                            <td class="cell-num">
+                                {% if row.was_subbed_off %}
+                                    <span class="sub-out-icon"></span>
+                                {% endif %}
+                                {% if row.came_from_bench %}
+                                    <span class="sub-in-icon"></span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="muted">Стартовый состав не задан.</p>
+        {% endif %}
+
+        <!-- Запасные -->
+        <h3 class="team-block-title" style="font-size:14px; margin:10px 0 6px;">
+            Запасные
+        </h3>
+        {% if home_bench %}
+            <table class="table team-players-table">
+                <thead>
+                    <tr>
+                        <th style="width:40px;">№</th>
+                        <th>Игрок</th>
+                        <th>Амплуа</th>
+                        <th class="cell-num">Голы</th>
+                        <th class="cell-num">Пасы</th>
+                        <th class="cell-num">ЖК</th>
+                        <th class="cell-num">КК</th>
+                        <th class="cell-num">Выход</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in home_bench %}
+                        <tr>
+                            <td class="cell-num">{{ row.number|default:"" }}</td>
+                            <td>
+                                <a href="{% url 'player_detail' row.player.id %}" class="link">
+                                    {{ row.player.first_name }} {{ row.player.last_name }}
+                                </a>
+                            </td>
+                            <td>
+                                {% if row.player.position %}
+                                    {{ row.player.get_position_display }}
+                                {% else %}
+                                    <span class="muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="cell-num strong">{{ row.goals }}</td>
+                            <td class="cell-num strong">{{ row.assists }}</td>
+                            <td class="cell-num">{{ row.yellow }}</td>
+                            <td class="cell-num">{{ row.red }}</td>
+                            <td class="cell-num">
+                                {% if row.came_from_bench %}
+                                    <span class="sub-in-icon"></span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="muted">Запасных нет.</p>
+        {% endif %}
+    </section>
+
+    <!-- Гости -->
+    <section class="team-block match-lineup-side">
+        <div class="team-block-header">
+            <h2 class="team-block-title">Состав {{ match.away_team.name }}</h2>
+        </div>
+
+        <!-- Стартовый состав -->
+        <h3 class="team-block-title" style="font-size:14px; margin:4px 0 6px;">
+            Стартовый состав
+        </h3>
+        {% if away_starters %}
+            <table class="table team-players-table">
+                <thead>
+                    <tr>
+                        <th style="width:40px;">№</th>
+                        <th>Игрок</th>
+                        <th>Амплуа</th>
+                        <th class="cell-num">Голы</th>
+                        <th class="cell-num">Пасы</th>
+                        <th class="cell-num">ЖК</th>
+                        <th class="cell-num">КК</th>
+                        <th class="cell-num">Замена</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in away_starters %}
+                        <tr>
+                            <td class="cell-num">{{ row.number|default:"" }}</td>
+                            <td>
+                                <a href="{% url 'player_detail' row.player.id %}" class="link">
+                                    {{ row.player.first_name }} {{ row.player.last_name }}
+                                </a>
+                            </td>
+                            <td>
+                                {% if row.player.position %}
+                                    {{ row.player.get_position_display }}
+                                {% else %}
+                                    <span class="muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="cell-num strong">{{ row.goals }}</td>
+                            <td class="cell-num strong">{{ row.assists }}</td>
+                            <td class="cell-num">{{ row.yellow }}</td>
+                            <td class="cell-num">{{ row.red }}</td>
+                            <td class="cell-num">
+                                {% if row.was_subbed_off %}
+                                    <span class="sub-out-icon"></span>
+                                {% endif %}
+                                {% if row.came_from_bench %}
+                                    <span class="sub-in-icon"></span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="muted">Стартовый состав не задан.</p>
+        {% endif %}
+
+        <!-- Запасные -->
+        <h3 class="team-block-title" style="font-size:14px; margin:10px 0 6px;">
+            Запасные
+        </h3>
+        {% if away_bench %}
+            <table class="table team-players-table">
+                <thead>
+                    <tr>
+                        <th style="width:40px;">№</th>
+                        <th>Игрок</th>
+                        <th>Амплуа</th>
+                        <th class="cell-num">Голы</th>
+                        <th class="cell-num">Пасы</th>
+                        <th class="cell-num">ЖК</th>
+                        <th class="cell-num">КК</th>
+                        <th class="cell-num">Выход</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in away_bench %}
+                        <tr>
+                            <td class="cell-num">{{ row.number|default:"" }}</td>
+                            <td>
+                                <a href="{% url 'player_detail' row.player.id %}" class="link">
+                                    {{ row.player.first_name }} {{ row.player.last_name }}
+                                </a>
+                            </td>
+                            <td>
+                                {% if row.player.position %}
+                                    {{ row.player.get_position_display }}
+                                {% else %}
+                                    <span class="muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="cell-num strong">{{ row.goals }}</td>
+                            <td class="cell-num strong">{{ row.assists }}</td>
+                            <td class="cell-num">{{ row.yellow }}</td>
+                            <td class="cell-num">{{ row.red }}</td>
+                            <td class="cell-num">
+                                {% if row.came_from_bench %}
+                                    <span class="sub-in-icon"></span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="muted">Запасных нет.</p>
+        {% endif %}
+    </section>
+
+</div>
+
+{% endblock %}

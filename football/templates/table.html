@@ -1,0 +1,208 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Турнирная таблица{% endblock %}
+
+{% block content %}
+
+<section class="panel">
+    <div class="panel-header" style="margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+        <div>
+            <h2 class="panel-title">Турнирная таблица</h2>
+        </div>
+        <a href="{% url 'index' %}" class="btn btn-ghost btn-small">
+            ← На главную
+        </a>
+    </div>
+
+    <!-- небольшое текстовое обозначение текущей сортировки -->
+    <div class="panel-block" style="padding-top:0;">
+        <div id="current-sort-info" class="muted" style="margin-bottom:8px; font-size:13px;">
+            Сейчас сортировка: по позиции (по возрастанию)
+        </div>
+
+        <div style="overflow-x:auto;">
+            <table class="table players-table small sortable-table" id="league-table">
+                <thead>
+                    <tr>
+                        <th data-sort-key="pos" data-sort-type="number">#</th>
+                        <th data-sort-key="team" data-sort-type="string">Команда</th>
+                        <th data-sort-key="games" data-sort-type="number">И</th>
+                        <th data-sort-key="wins" data-sort-type="number">В</th>
+                        <th data-sort-key="draws" data-sort-type="number">Н</th>
+                        <th data-sort-key="losses" data-sort-type="number">П</th>
+                        <th data-sort-key="gf" data-sort-type="number">Забито</th>
+                        <th data-sort-key="ga" data-sort-type="number">Пропущено</th>
+                        <th data-sort-key="points" data-sort-type="number">Очки</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in standings %}
+                        <tr
+                            data-pos="{{ forloop.counter }}"
+                            data-team="{{ row.team.name }}"
+                            data-games="{{ row.games }}"
+                            data-wins="{{ row.wins }}"
+                            data-draws="{{ row.draws }}"
+                            data-losses="{{ row.losses }}"
+                            data-gf="{{ row.goals_for }}"
+                            data-ga="{{ row.goals_against }}"
+                            data-points="{{ row.points }}"
+                        >
+                            <td class="cell-num">{{ forloop.counter }}</td>
+                            <td>
+                                <div class="team-cell">
+                                    <div class="team-emblem">
+                                        {% if row.team.emblem %}
+                                            <img src="{% static 'emblems/' %}{{ row.team.emblem }}" alt="{{ row.team.name }}">
+                                        {% else %}
+                                            <span>{{ row.team.name|slice:":2"|upper }}</span>
+                                        {% endif %}
+                                    </div>
+                                    <div>
+                                        <a href="{% url 'team_detail' row.team.id %}" class="link">
+                                            {{ row.team.name }}
+                                        </a><br>
+                                        {% if row.team.city %}
+                                            <span class="muted">{{ row.team.city }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="cell-num">{{ row.games }}</td>
+                            <td class="cell-num">{{ row.wins }}</td>
+                            <td class="cell-num">{{ row.draws }}</td>
+                            <td class="cell-num">{{ row.losses }}</td>
+                            <td class="cell-num">{{ row.goals_for }}</td>
+                            <td class="cell-num">{{ row.goals_against }}</td>
+                            <td class="cell-num strong">{{ row.points }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="9" class="muted">
+                                Пока нет завершённых матчей, таблицу построить нельзя.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<!-- стрелочки для активной сортировки -->
+<style>
+    th.active-sort-asc::after {
+        content: "▲";
+        margin-left: 4px;
+        font-size: 10px;
+    }
+    th.active-sort-desc::after {
+        content: "▼";
+        margin-left: 4px;
+        font-size: 10px;
+    }
+</style>
+
+<!-- Простая сортировка по клику на заголовок + текст "как сейчас сортируется" -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const table = document.getElementById('league-table');
+    if (!table) return;
+
+    const tbody = table.querySelector('tbody');
+    const headers = table.querySelectorAll('thead th');
+    const sortInfo = document.getElementById('current-sort-info');
+
+    // текущее состояние сортировки
+    let currentSortKey = 'pos';
+    let currentDirection = 'asc'; // asc / desc
+
+    // человекочитаемые названия колонок
+    const sortNames = {
+        pos: 'позиции',
+        team: 'названию команды',
+        games: 'количеству матчей',
+        wins: 'количеству побед',
+        draws: 'количеству ничьих',
+        losses: 'количеству поражений',
+        gf: 'забитым голам',
+        ga: 'пропущенным голам',
+        points: 'очкам'
+    };
+
+    function updateSortInfo() {
+        const name = sortNames[currentSortKey] || currentSortKey;
+        const dirText = currentDirection === 'asc'
+            ? 'по возрастанию'
+            : 'по убыванию';
+        if (sortInfo) {
+            sortInfo.textContent = 'Сейчас сортировка: по ' + name + ' (' + dirText + ')';
+        }
+    }
+
+    headers.forEach((th) => {
+        const key = th.dataset.sortKey;
+        const type = th.dataset.sortType || 'string';
+        if (!key) return;
+
+        th.style.cursor = 'pointer';
+
+        th.addEventListener('click', () => {
+            if (currentSortKey === key) {
+                // если кликаем по тому же полю — разворачиваем порядок
+                currentDirection = (currentDirection === 'asc') ? 'desc' : 'asc';
+            } else {
+                currentSortKey = key;
+                currentDirection = 'asc';
+            }
+
+            // снимаем "активный" стиль со всех заголовков
+            headers.forEach(h => h.classList.remove('active-sort-asc', 'active-sort-desc'));
+
+            // ставим на выбранный
+            if (currentDirection === 'asc') {
+                th.classList.add('active-sort-asc');
+            } else {
+                th.classList.add('active-sort-desc');
+            }
+
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+
+            rows.sort((rowA, rowB) => {
+                const aValRaw = rowA.dataset[key];
+                const bValRaw = rowB.dataset[key];
+
+                if (type === 'number') {
+                    const aVal = parseInt(aValRaw || '0', 10);
+                    const bVal = parseInt(bValRaw || '0', 10);
+                    if (aVal < bVal) return currentDirection === 'asc' ? -1 : 1;
+                    if (aVal > bVal) return currentDirection === 'asc' ? 1 : -1;
+                    return 0;
+                } else {
+                    const aVal = (aValRaw || '').toLowerCase();
+                    const bVal = (bValRaw || '').toLowerCase();
+                    if (aVal < bVal) return currentDirection === 'asc' ? -1 : 1;
+                    if (aVal > bVal) return currentDirection === 'asc' ? 1 : -1;
+                    return 0;
+                }
+            });
+
+            // перерисовываем тело таблицы
+            rows.forEach(r => tbody.appendChild(r));
+
+            updateSortInfo();
+        });
+    });
+
+    // выставляем начальное состояние: сортировка по позиции по возрастанию
+    headers.forEach(h => h.classList.remove('active-sort-asc', 'active-sort-desc'));
+    const first = Array.from(headers).find(h => h.dataset.sortKey === currentSortKey);
+    if (first) {
+        first.classList.add('active-sort-asc');
+    }
+    updateSortInfo();
+});
+</script>
+
+{% endblock %}

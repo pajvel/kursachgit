@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Команды{% endblock %}
+
+{% block content %}
+<div class="panel">
+
+    <div class="teams-header">
+        <div>
+            <h1 class="teams-title">Команды лиги</h1>
+            <p class="teams-subtitle">
+                список команд, тренеры и место в таблице
+            </p>
+        </div>
+        <div>
+            <a href="{% url 'team_create' %}" class="btn btn-primary">
+                + Добавить команду
+            </a>
+        </div>
+    </div>
+
+    <!-- Поиск и сортировка -->
+    <form method="get" style="margin-bottom: 10px; display:flex; gap:8px; align-items:center;">
+        <input
+            type="text"
+            name="search"
+            value="{{ search }}"
+            placeholder="Поиск по названию или городу"
+            class="form-input"
+            style="max-width:260px;"
+        >
+        <select name="sort" class="form-select" style="max-width:150px;">
+            <option value="name" {% if sort == 'name' %}selected{% endif %}>По названию</option>
+            <option value="city" {% if sort == 'city' %}selected{% endif %}>По городу</option>
+        </select>
+        <select name="order" class="form-select" style="max-width:150px;">
+            <option value="asc" {% if order == 'asc' %}selected{% endif %}>По возрастанию</option>
+            <option value="desc" {% if order == 'desc' %}selected{% endif %}>По убыванию</option>
+        </select>
+        <button type="submit" class="btn btn-ghost btn-small">Применить</button>
+    </form>
+
+    {% if teams %}
+        <div class="teams-grid">
+            {% for team in teams %}
+                <div class="team-card">
+                    <div class="team-card-main">
+                        <div class="team-card-emblem">
+                            {% if team.emblem %}
+                                <img src="{% static 'emblems/' %}{{ team.emblem }}" alt="{{ team.name }}">
+                            {% else %}
+                                <span>{{ team.name|slice:":3"|upper }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="team-card-text">
+                            <p class="team-card-name">
+                                <a href="{% url 'team_detail' team.id %}">
+                                    {{ team.name }}
+                                </a>
+                            </p>
+                            <div class="team-card-meta">
+                                {% if team.city %}
+                                    <span>{{ team.city }}</span>
+                                {% else %}
+                                    <span class="muted">Город не указан</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="team-card-footer">
+                        <div class="team-card-stats">
+                            {% if team.place %}
+                                <span class="team-stat-pill">
+                                    Место: {{ team.place }}
+                                </span>
+                            {% endif %}
+                            {% if team.coach %}
+                                <span class="team-stat-pill">
+                                    Тренер: {{ team.coach }}
+                                </span>
+                            {% endif %}
+                        </div>
+                        <div style="display:flex; gap:6px;">
+                            <a href="{% url 'team_edit' team.id %}" class="btn btn-ghost btn-small">
+                                ✏️
+                            </a>
+                            <a href="{% url 'team_detail' team.id %}" class="btn btn-ghost btn-small">
+                                Открыть
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="muted">Команд пока нет — добавь первую.</p>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,189 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Создание игрока{% endblock %}
+
+{% block content %}
+
+<section class="form-panel">
+    <div class="form-header">
+        <h1 class="form-title">Создание игрока</h1>
+        <p class="form-subtitle">
+            Заполни данные игрока. Дата рождения выбирается календарём и сохраняется как ГГГГ-ММ-ДД.
+        </p>
+    </div>
+
+    {% if form.non_field_errors %}
+        <div class="form-errors">
+            {{ form.non_field_errors }}
+        </div>
+    {% endif %}
+
+    <form method="post">
+        {% csrf_token %}
+
+        <div class="form-body">
+
+            <div class="form-row">
+                <label class="form-label" for="{{ form.first_name.id_for_label }}">Имя</label>
+                {{ form.first_name }}
+                {% if form.first_name.errors %}
+                    <div class="form-errors">{{ form.first_name.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div class="form-row">
+                <label class="form-label" for="{{ form.last_name.id_for_label }}">Фамилия</label>
+                {{ form.last_name }}
+                {% if form.last_name.errors %}
+                    <div class="form-errors">{{ form.last_name.errors }}</div>
+                {% endif %}
+            </div>
+
+            <!-- Дата рождения (БЕЗ JS) -->
+            <div class="form-row">
+                <label class="form-label" for="id_birth_date">Дата рождения</label>
+                <input type="date"
+                       name="birth_date"
+                       id="id_birth_date"
+                       class="form-input"
+                       value="{{ form.birth_date.value|default_if_none:'' }}">
+                <div class="form-help">
+                    Выбери дату в календаре (формат сохранения ГГГГ-ММ-ДД).
+                </div>
+                {% if form.birth_date.errors %}
+                    <div class="form-errors">{{ form.birth_date.errors }}</div>
+                {% endif %}
+            </div>
+
+            <!-- Позиция (JS можно) -->
+            <div class="form-row">
+                <label class="form-label">Амплуа</label>
+
+                <!-- сюда JS пишет код позиции -->
+                <input type="hidden" name="position" id="id_position"
+                       value="{{ form.position.value|default_if_none:'' }}">
+
+                <div class="position-pills">
+                    <button type="button"
+                            class="btn btn-ghost btn-small position-btn {% if form.position.value == 'ВРТ' %}position-btn-active{% endif %}"
+                            data-value="ВРТ">
+                        Вратарь
+                    </button>
+                    <button type="button"
+                            class="btn btn-ghost btn-small position-btn {% if form.position.value == 'ЗАЩ' %}position-btn-active{% endif %}"
+                            data-value="ЗАЩ">
+                        Защитник
+                    </button>
+                    <button type="button"
+                            class="btn btn-ghost btn-small position-btn {% if form.position.value == 'ПЗ' %}position-btn-active{% endif %}"
+                            data-value="ПЗ">
+                        Полузащитник
+                    </button>
+                    <button type="button"
+                            class="btn btn-ghost btn-small position-btn {% if form.position.value == 'НАП' %}position-btn-active{% endif %}"
+                            data-value="НАП">
+                        Нападающий
+                    </button>
+                </div>
+
+                <p class="form-help">
+                    Нажми на позицию — в БД уйдёт код (ВРТ / ЗАЩ / ПЗ / НАП).
+                </p>
+
+                {% if form.position.errors %}
+                    <div class="form-errors">{{ form.position.errors }}</div>
+                {% endif %}
+            </div>
+
+            <!-- Команда (JS можно) -->
+            <div class="form-row">
+                <label class="form-label">Команда игрока</label>
+
+                <!-- сюда JS пишет id команды -->
+                <input type="hidden" name="team_id" id="id_team_id"
+                       value="{{ request.POST.team_id|default_if_none:'' }}">
+
+                {% if teams %}
+                    <div class="team-choice-grid">
+                        {% for t in teams %}
+                            <div class="team-choice-card {% if request.POST.team_id == t.id|stringformat:'s' %}active{% endif %}"
+                                 data-team-id="{{ t.id }}">
+                                <div class="team-choice-emblem">
+                                    {% if t.emblem %}
+                                        <img src="{% static 'emblems/' %}{{ t.emblem }}" alt="{{ t.name }}">
+                                    {% else %}
+                                        <span>{{ t.name|slice:":2"|upper }}</span>
+                                    {% endif %}
+                                </div>
+                                <div class="team-choice-body">
+                                    <div class="team-choice-name">{{ t.name }}</div>
+                                    <div class="team-choice-tag">
+                                        {% if t.city %}{{ t.city }}{% else %}Без города{% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+
+                    <p class="form-help">
+                        Клик по карточке выберет/снимет команду. Чтобы оставить без команды — не выбирай ничего.
+                    </p>
+                {% else %}
+                    <p class="muted">
+                        Команд ещё нет. Сначала создай команду.
+                    </p>
+                {% endif %}
+            </div>
+
+        </div>
+
+        <div class="form-footer">
+            <a href="{% url 'player_list' %}" class="btn btn-ghost btn-small">
+                ← Назад к списку
+            </a>
+            <button type="submit" class="btn btn-primary btn-small">
+                ➕ Создать игрока
+            </button>
+        </div>
+    </form>
+</section>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    // ------- Позиции -------
+    const posBtns  = document.querySelectorAll('.position-btn');
+    const posInput = document.getElementById('id_position');
+
+    posBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            posBtns.forEach(b => b.classList.remove('position-btn-active'));
+            btn.classList.add('position-btn-active');
+            posInput.value = btn.dataset.value; // ВРТ / ЗАЩ / ПЗ / НАП
+        });
+    });
+
+    // ------- Команды -------
+    const teamCards = document.querySelectorAll('.team-choice-card');
+    const teamInput = document.getElementById('id_team_id');
+
+    teamCards.forEach(card => {
+        card.addEventListener('click', () => {
+            const clickedId = card.dataset.teamId;
+
+            if (teamInput.value === clickedId) {
+                teamInput.value = '';
+                card.classList.remove('active');
+            } else {
+                teamCards.forEach(c => c.classList.remove('active'));
+                teamInput.value = clickedId;
+                card.classList.add('active');
+            }
+        });
+    });
+
+});
+</script>
+
+{% endblock %}

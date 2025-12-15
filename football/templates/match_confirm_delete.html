@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Удаление матча{% endblock %}
+
+{% block content %}
+<div class="delete-panel">
+    <h1 class="delete-title">Удалить матч?</h1>
+    <p class="delete-text">
+        Вы действительно хотите удалить матч
+        <strong>{{ match.home_team.name }} — {{ match.away_team.name }}</strong>?
+        <br>
+        Дата матча: {{ match.date|date:"d.m.Y H:i" }}.
+        <br>
+        Действие необратимо — матч, составы и события будут удалены.
+    </p>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="delete-footer">
+            <a href="{% url 'match_detail' match.id %}" class="btn btn-ghost btn-small">
+                Отмена
+            </a>
+            <button type="submit" class="btn btn-danger">
+                Да, удалить
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,79 @@
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# =========================
+# Environment / secrets
+# =========================
+.env
+
+# =========================
+# Django
+# =========================
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Collected static files
+staticfiles/
+
+# Media uploads
+media/
+
+# =========================
+# Database dumps
+# =========================
+*.sql
+*.dump
+*.backup
+
+# =========================
+# Packaging / build
+# =========================
+build/
+dist/
+*.egg-info/
+.eggs/
+wheels/
+
+# =========================
+# Tests / coverage
+# =========================
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.tox/
+
+# =========================
+# OS
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# IDEs
+# =========================
+.idea/
+.vscode/
+.spyderproject
+.spyproject
+.ropeproject
+
+# =========================
+# Mypy / Ruff
+# =========================
+.mypy_cache/
+.ruff_cache/

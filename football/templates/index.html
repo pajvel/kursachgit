@@ -1,0 +1,269 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Главная{% endblock %}
+
+{% block content %}
+<div class="home-grid">
+
+    <!-- ЛЕВАЯ ПАНЕЛЬ: 4 блока лучших игроков (топ-3) -->
+    <section class="panel">
+        <header class="panel-header">
+            <h1 class="panel-title">Лучшие игроки</h1>
+        </header>
+
+        <!-- БОМБАРДИРЫ -->
+        <div class="panel-block">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                <div><strong>Топ-3 бомбардиры</strong></div>
+                <a href="{% url 'stats' %}?tab=scorers" class="btn btn-ghost btn-small">
+                    Вся статистика
+                </a>
+            </div>
+
+            {% if top_scorers %}
+                <table class="table players-table small">
+                    <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Игрок</th>
+                        <th>Команда</th>
+                        <th class="cell-num">И</th>
+                        <th class="cell-num">Г</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for p in top_scorers|slice:":3" %}
+                        <tr>
+                            <td class="cell-num">{{ forloop.counter }}</td>
+                            <td>
+                                <a href="{% url 'player_detail' p.id %}" class="link">
+                                    {{ p.first_name }} {{ p.last_name }}
+                                </a>
+                            </td>
+                            <td>
+                                {% with tp=p.team_players.all.0 %}
+                                    {% if tp %}
+                                        {{ tp.team.name }}
+                                    {% else %}
+                                        <span class="muted">без команды</span>
+                                    {% endif %}
+                                {% endwith %}
+                            </td>
+                            <td class="cell-num">{{ p.games|default:0 }}</td>
+                            <td class="cell-num strong">{{ p.goals }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="muted">Пока нет забитых голов.</p>
+            {% endif %}
+        </div>
+
+        <!-- АССИСТЕНТЫ -->
+        <div class="panel-block">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                <div><strong>Топ-3 ассистенты</strong></div>
+                <a href="{% url 'stats' %}?tab=assists" class="btn btn-ghost btn-small">
+                    Вся статистика
+                </a>
+            </div>
+
+            {% if top_assists %}
+                <table class="table players-table small">
+                    <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Игрок</th>
+                        <th>Команда</th>
+                        <th class="cell-num">И</th>
+                        <th class="cell-num">А</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for p in top_assists|slice:":3" %}
+                        <tr>
+                            <td class="cell-num">{{ forloop.counter }}</td>
+                            <td>
+                                <a href="{% url 'player_detail' p.id %}" class="link">
+                                    {{ p.first_name }} {{ p.last_name }}
+                                </a>
+                            </td>
+                            <td>
+                                {% with tp=p.team_players.all.0 %}
+                                    {% if tp %}
+                                        {{ tp.team.name }}
+                                    {% else %}
+                                        <span class="muted">без команды</span>
+                                    {% endif %}
+                                {% endwith %}
+                            </td>
+                            <td class="cell-num">{{ p.games|default:0 }}</td>
+                            <td class="cell-num strong">{{ p.assists }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="muted">Пока нет голевых передач.</p>
+            {% endif %}
+        </div>
+
+        <!-- ЖЁЛТЫЕ КАРТОЧКИ -->
+        <div class="panel-block">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                <div><strong>Топ-3 по жёлтым карточкам</strong></div>
+                <a href="{% url 'stats' %}?tab=yellow" class="btn btn-ghost btn-small">
+                    Вся статистика
+                </a>
+            </div>
+
+            {% if top_yellow %}
+                <table class="table players-table small">
+                    <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Игрок</th>
+                        <th>Команда</th>
+                        <th class="cell-num">И</th>
+                        <th class="cell-num">ЖК</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for p in top_yellow|slice:":3" %}
+                        <tr>
+                            <td class="cell-num">{{ forloop.counter }}</td>
+                            <td>
+                                <a href="{% url 'player_detail' p.id %}" class="link">
+                                    {{ p.first_name }} {{ p.last_name }}
+                                </a>
+                            </td>
+                            <td>
+                                {% with tp=p.team_players.all.0 %}
+                                    {% if tp %}
+                                        {{ tp.team.name }}
+                                    {% else %}
+                                        <span class="muted">без команды</span>
+                                    {% endif %}
+                                {% endwith %}
+                            </td>
+                            <td class="cell-num">{{ p.games|default:0 }}</td>
+                            <td class="cell-num strong">{{ p.yellow_cards }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="muted">Жёлтых карточек ещё нет.</p>
+            {% endif %}
+        </div>
+
+        <!-- КРАСНЫЕ КАРТОЧКИ -->
+        <div class="panel-block">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                <div><strong>Топ-3 по красным карточкам</strong></div>
+                <a href="{% url 'stats' %}?tab=red" class="btn btn-ghost btn-small">
+                    Вся статистика
+                </a>
+            </div>
+
+            {% if top_red %}
+                <table class="table players-table small">
+                    <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Игрок</th>
+                        <th>Команда</th>
+                        <th class="cell-num">И</th>
+                        <th class="cell-num">КК</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for p in top_red|slice:":3" %}
+                        <tr>
+                            <td class="cell-num">{{ forloop.counter }}</td>
+                            <td>
+                                <a href="{% url 'player_detail' p.id %}" class="link">
+                                    {{ p.first_name }} {{ p.last_name }}
+                                </a>
+                            </td>
+                            <td>
+                                {% with tp=p.team_players.all.0 %}
+                                    {% if tp %}
+                                        {{ tp.team.name }}
+                                    {% else %}
+                                        <span class="muted">без команды</span>
+                                    {% endif %}
+                                {% endwith %}
+                            </td>
+                            <td class="cell-num">{{ p.games|default:0 }}</td>
+                            <td class="cell-num strong">{{ p.red_cards }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="muted">Удалений ещё не было.</p>
+            {% endif %}
+        </div>
+    </section>
+
+    <!-- ПРАВАЯ ПАНЕЛЬ: турнирная таблица (как у тебя было) -->
+    <section class="panel">
+        <header class="panel-header">
+            <h1 class="panel-title">Турнирная таблица</h1>
+        </header>
+
+        {% if standings %}
+            <table class="table standings-table">
+                <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Команда</th>
+                    <th>И</th>
+                    <th>В</th>
+                    <th>Н</th>
+                    <th>П</th>
+                    <th>Мячи</th>
+                    <th>О</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for row in standings %}
+                    <tr>
+                        <td class="cell-num">{{ forloop.counter }}</td>
+                        <td>
+                            <div class="team-cell">
+                                <div class="team-emblem">
+                                    {% if row.team.emblem %}
+                                        <img src="{% static 'emblems/' %}{{ row.team.emblem }}"
+                                             alt="{{ row.team.name }}">
+                                    {% else %}
+                                        <span>{{ row.team.name|slice:":2"|upper }}</span>
+                                    {% endif %}
+                                </div>
+                                <a href="{% url 'team_detail' row.team.id %}" class="team-name">
+                                    {{ row.team.name }}
+                                </a>
+                            </div>
+                        </td>
+                        <td class="cell-num">{{ row.games }}</td>
+                        <td class="cell-num">{{ row.wins }}</td>
+                        <td class="cell-num">{{ row.draws }}</td>
+                        <td class="cell-num">{{ row.losses }}</td>
+                        <td class="cell-num">
+                            {{ row.goals_for }}–{{ row.goals_against }}
+                        </td>
+                        <td class="cell-num strong">{{ row.points }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="muted">Таблица появится после первых завершённых матчей.</p>
+        {% endif %}
+    </section>
+
+</div>
+{% endblock %}

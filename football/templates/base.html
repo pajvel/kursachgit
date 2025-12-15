@@ -1,0 +1,116 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Футбольный турнир{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'styles.css' %}">
+</head>
+<body>
+<div class="layout">
+
+    <!-- ШАПКА -->
+    <header class="topbar">
+        <div class="topbar-inner">
+            <a href="{% url 'index' %}" class="brand">
+                <div class="brand-logo">⚽</div>
+                <div class="brand-text">
+                    <span class="brand-title">Football League</span>
+                    <span class="brand-subtitle">панель турнира</span>
+                </div>
+            </a>
+
+            <nav class="main-nav">
+                <a href="{% url 'team_list' %}" class="nav-link">Команды</a>
+                <a href="{% url 'player_list' %}" class="nav-link">Игроки</a>
+                <a href="{% url 'match_list' %}" class="nav-link">Матчи</a>
+                <a href="{% url 'table' %}" class="nav-link">Таблица</a>
+                <a href="{% url 'stats' %}" class="nav-link">Статистика</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- ГОРИЗОНТАЛЬНЫЙ БЛОК МАТЧЕЙ ПОД ШАПКОЙ (ЕСТЬ НА ВСЕХ СТРАНИЦАХ) -->
+    {% if header_matches %}
+    <section class="matches-strip">
+        <div class="container">
+            <div class="matches-scroll">
+                {% for m in header_matches %}
+                    <a href="{% url 'match_detail' m.id %}" class="match-card">
+                        <div class="match-card-top">
+                            <!-- хозяева -->
+                            <div class="match-team">
+                                <div class="team-badge">
+                                    {% if m.home_team.emblem %}
+                                        <img src="{% static 'emblems/' %}{{ m.home_team.emblem }}"
+                                             alt="{{ m.home_team.name }}">
+                                    {% else %}
+                                        <span>{{ m.home_team.name|slice:":3"|upper }}</span>
+                                    {% endif %}
+                                </div>
+                                <div class="team-code">
+                                    {{ m.home_team.name|slice:":3"|upper }}
+                                </div>
+                            </div>
+
+                            <!-- счёт -->
+                            <div class="match-score">
+                                {% if m.home_goals is not None and m.away_goals is not None %}
+                                    {{ m.home_goals }} — {{ m.away_goals }}
+                                {% else %}
+                                    - : -
+                                {% endif %}
+                            </div>
+
+                            <!-- гости -->
+                            <div class="match-team">
+                                <div class="team-badge">
+                                    {% if m.away_team.emblem %}
+                                        <img src="{% static 'emblems/' %}{{ m.away_team.emblem }}"
+                                             alt="{{ m.away_team.name }}">
+                                    {% else %}
+                                        <span>{{ m.away_team.name|slice:":3"|upper }}</span>
+                                    {% endif %}
+                                </div>
+                                <div class="team-code">
+                                    {{ m.away_team.name|slice:":3"|upper }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="match-card-bottom">
+                            <span class="match-date">
+                                {{ m.date|date:"d.m H:i" }}
+                            </span>
+                            <span class="match-status">
+                                {{ m.get_status_display }}
+                            </span>
+                        </div>
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- ОСНОВНОЙ КОНТЕНТ -->
+    <main class="main">
+        <div class="container">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <!-- ФУТЕР -->
+    <footer class="footer">
+    <div class="container footer-inner">
+        <span>Футбольная лига · курсовая работа студента ЦПИ-21 Рыбина Павла</span>
+        <span class="footer-muted">
+            <a href="{% url 'reports' %}" class="footer-muted">Отчёты</a>
+        </span>
+    </div>
+</footer>
+
+
+</div>
+</body>
+</html>

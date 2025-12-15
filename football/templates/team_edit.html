@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Редактирование команды {{ team.name }}{% endblock %}
+
+{% block content %}
+<div class="form-panel">
+    <div class="form-header">
+        <h1 class="form-title">Редактирование команды</h1>
+        <p class="form-subtitle">
+            измените данные клуба, состав редактируется отдельно
+        </p>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-body">
+            {{ form.non_field_errors }}
+            {% for field in form %}
+                <div class="form-row">
+                    <label class="form-label" for="{{ field.id_for_label }}">
+                        {{ field.label }}
+                    </label>
+                    {{ field }}
+                    {% if field.help_text %}
+                        <div class="form-help">{{ field.help_text }}</div>
+                    {% endif %}
+                    {% if field.errors %}
+                        <div class="form-errors">
+                            {{ field.errors }}
+                        </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+
+        <div class="form-footer">
+            <a href="{% url 'team_detail' team.id %}" class="btn btn-ghost btn-small">
+                Назад к команде
+            </a>
+            <div style="display:flex; gap:8px;">
+                <a href="{% url 'team_squad_edit' team.id %}" class="btn btn-ghost btn-small">
+                    Редактировать состав
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    Сохранить изменения
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
